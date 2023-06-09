@@ -8,7 +8,7 @@ def evaluate(encoder, decoder, sentence, input_lang, output_lang, max_length=Non
     with torch.no_grad():
         input_tensor = tensor_from_sentence(input_lang, sentence, device=device)
         input_length = input_tensor.size()[0]
-        encoder_hidden = encoder.init_hidden()
+        encoder_hidden = encoder.init_hidden(device=device)
 
         encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
 

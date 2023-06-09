@@ -11,7 +11,7 @@ from plot import show_plot
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
           max_length=None, device="cpu", teacher_forcing_ratio=0.5):
     assert max_length is not None
-    encoder_hidden = encoder.init_hidden()
+    encoder_hidden = encoder.init_hidden(device=device)
 
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
@@ -63,8 +63,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
 
 
 def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_iters, print_every=1000,
-                plot_every=None,
-                learning_rate=0.01, max_length=None, device="cpu", teacher_forcing_ratio=0.5):
+                plot_every=None, learning_rate=0.01, max_length=None, device="cpu", teacher_forcing_ratio=0.5):
     assert max_length is not None
     if plot_every is None:
         plot_every = print_every
