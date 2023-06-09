@@ -2,6 +2,7 @@ import random
 import time
 import torch
 import torch.nn as nn
+from utils import *
 
 
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
@@ -58,7 +59,10 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     return loss.item() / target_length
 
 
-def train_iters(encoder, decoder, pairs, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+def train_iters(encoder, decoder, pairs, n_iters, print_every=1000, plot_every=100, learning_rate=0.01, max_length=None,
+                device="cpu", teacher_forcing_ratio=0.5):
+    assert max_length is not None
+
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
@@ -75,7 +79,9 @@ def train_iters(encoder, decoder, pairs, n_iters, print_every=1000, plot_every=1
         target_tensor = training_pair[1]
 
         loss = train(input_tensor, target_tensor, encoder,
-                     decoder, encoder_optimizer, decoder_optimizer, criterion)
+                     decoder, encoder_optimizer, decoder_optimizer,
+                     criterion,
+                     max_length=max_length, device=device, teacher_forcing_ratio=teacher_forcing_ratio)
         print_loss_total += loss
         plot_loss_total += loss
 
