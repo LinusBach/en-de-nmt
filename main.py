@@ -25,6 +25,3 @@ attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, dropout_p=0.1, 
 train_iters(encoder1, attn_decoder1, pairs, input_lang, output_lang, n_iters, print_every=print_every, learning_rate=lr,
             max_length=MAX_LENGTH, device=device)
 # evaluate(encoder1, attn_decoder1, "announcement", input_lang, output_lang, max_length=MAX_LENGTH, device=device)
-
-torch.save(encoder1.state_dict(), 'encoder.pt')
-torch.save(attn_decoder1.state_dict(), 'decoder.pt')
