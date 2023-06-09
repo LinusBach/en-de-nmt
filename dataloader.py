@@ -6,7 +6,7 @@ import torch
 
 SOS_token = 0
 EOS_token = 1
-MAX_LENGTH = 20
+MAX_LENGTH = 10
 
 
 class Lang:
@@ -104,6 +104,7 @@ def prepare_data(path_en, path_de, sample_size=-1):
 
 
 def indexes_from_sentence(lang, sentence):
+    print(sentence)
     return [lang.word2index[word] for word in sentence.split(' ')]
 
 

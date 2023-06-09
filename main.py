@@ -15,6 +15,7 @@ epochs = 10
 
 input_lang, output_lang, pairs = prepare_data('data/train.en', 'data/train.de', 100)
 print(f'number of pairs: {len(pairs)}')
+print(pairs)
 
 hidden_size = 256
 encoder1 = EncoderRNN(input_lang.n_words, hidden_size).to(device)
@@ -23,4 +24,4 @@ attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, dropout_p=0.1, 
 # TODO add pairs
 train_iters(encoder1, attn_decoder1, pairs, input_lang, output_lang, epochs, print_every=50, max_length=MAX_LENGTH,
             device=device)
-evaluate(encoder1, attn_decoder1, "I am cold.", input_lang, output_lang, max_length=MAX_LENGTH, device=device)
+evaluate(encoder1, attn_decoder1, "announcement", input_lang, output_lang, max_length=MAX_LENGTH, device=device)
