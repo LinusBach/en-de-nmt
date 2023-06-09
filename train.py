@@ -4,16 +4,9 @@ import torch
 import torch.nn as nn
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-teacher_forcing_ratio = 0.5
-MAX_LENGTH = 10
-SOS_token = 0
-EOS_token = 1
-
-
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
-          max_length=MAX_LENGTH):
+          max_length=None, device="cpu", teacher_forcing_ratio=0.5):
+    assert max_length is not None
     encoder_hidden = encoder.initHidden()
 
     encoder_optimizer.zero_grad()
@@ -65,7 +58,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     return loss.item() / target_length
 
 
-def train_iters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+def train_iters(encoder, decoder, pairs, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
