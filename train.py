@@ -9,7 +9,7 @@ from dataloader import *
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
           max_length=None, device="cpu", teacher_forcing_ratio=0.5):
     assert max_length is not None
-    encoder_hidden = encoder.initHidden()
+    encoder_hidden = encoder.init_hidden()
 
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
