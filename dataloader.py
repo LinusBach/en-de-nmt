@@ -56,11 +56,23 @@ def readLangs(path_en, path_de, sample_size):
     print("Reading lines...")
 
     # Read the file and split into lines
-    lines1 = open(path_en, encoding='utf-8').\
-        read().strip().split('\n')
+    file = open(path_en, encoding='utf-8')
+    lines1 = list()
+    if sample_size == -1:
+        lines1 = file.readlines()
+    else:
+        for i in range(sample_size):
+            lines1.append(file.readline())
+    file.close()
 
-    lines2 = open(path_de, encoding='utf-8').\
-        read().strip().split('\n')
+    file = open(path_de, encoding='utf-8')
+    lines2 = list()
+    if sample_size == -1:
+        lines2 = file.readlines()
+    else:
+        for i in range(sample_size):
+            lines2.append(file.readline())
+    file.close()
 
     # Split every line into pairs and normalize
     pairs = [[normalizeString(s1), normalizeString(s2)] for s1, s2 in zip(lines1, lines2)]
@@ -93,19 +105,20 @@ def filterPairs(pairs):
 
 
 def prepareData(path_en, path_de, sample_size=-1):
-    input_lang, output_lang, pairs = readLangs(path_en, path_de, sample_size)
+    en_lang, de_lang, pairs = readLangs(path_en, path_de, sample_size)
     print("Read %s sentence pairs" % len(pairs))
     pairs = filterPairs(pairs)
     print("Trimmed to %s sentence pairs" % len(pairs))
     print("Counting words...")
     for pair in pairs:
-        input_lang.addSentence(pair[0])
-        output_lang.addSentence(pair[1])
+        en_lang.addSentence(pair[0])
+        de_lang.addSentence(pair[1])
     print("Counted words:")
-    print(input_lang.name, input_lang.n_words)
-    print(output_lang.name, output_lang.n_words)
-    return input_lang, output_lang, pairs
+    print(en_lang.name, en_lang.n_words)
+    print(de_lang.name, de_lang.n_words)
+    return en_lang, de_lang, pairs
 
 
 input_lang, output_lang, pairs = prepareData('data/train.en', 'data/train.de', 100)
+
 print(random.choice(pairs))
