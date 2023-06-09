@@ -1,6 +1,8 @@
 #!/bin/bash
 #SBATCH --time=00:02:00
 #SBATCH --ntasks=1
+#SBATCH --partition=gpu
+#SBATCH --gpus-per-node=a100:1
 #SBATCH --job-name=main
 #SBATCH --mem=8000
 
