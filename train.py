@@ -97,10 +97,10 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
             # print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
             #                              iter, iter / n_iters * 100, print_loss_avg))
 
-        if i % plot_every == 0:
+        if i % plot_every == plot_every - 1:
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
-    # show_plot(plot_losses)
+    show_plot(plot_losses)
     print(plot_losses)
