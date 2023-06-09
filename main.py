@@ -11,11 +11,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 teacher_forcing_ratio = 0.5
 
-epochs = 10
+epochs = 200
+n_samples = 100
 
-input_lang, output_lang, pairs = prepare_data('data/train.en', 'data/train.de', 100)
+input_lang, output_lang, pairs = prepare_data('data/train.en', 'data/train.de', n_samples)
 print(f'number of pairs: {len(pairs)}')
-print(pairs)
 
 hidden_size = 256
 encoder1 = EncoderRNN(input_lang.n_words, hidden_size).to(device)
