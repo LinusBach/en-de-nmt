@@ -12,6 +12,8 @@ MAX_LENGTH = 10
 SOS_token = 0
 EOS_token = 1
 
+epochs = 10
+
 input_lang, output_lang, pairs = prepare_data('data/train.en', 'data/train.de', 100)
 print(type(pairs))
 print(pairs)

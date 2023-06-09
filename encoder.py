@@ -8,12 +8,12 @@ class EncoderRNN(nn.Module):
         self.hidden_size = hidden_size
 
         self.embedding = nn.Embedding(input_size, hidden_size)
-        self.lstm = nn.LSTM(hidden_size, hidden_size)
+        self.gru = nn.GRU(hidden_size, hidden_size)
 
     def forward(self, features, hidden):
         embedded = self.embedding(features).view(1, 1, -1)
         output = embedded
-        output, hidden = self.lstm(output, hidden)
+        output, hidden = self.gru(output, hidden)
         return output, hidden
 
     def init_hidden(self, device="cpu"):

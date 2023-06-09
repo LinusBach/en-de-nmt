@@ -83,7 +83,7 @@ eng_prefixes = (
 
 
 def filter_pair(p):
-    return len(p[0].split()) < MAX_LENGTH and len(p[1].split()) < MAX_LENGTH
+    return len(p[0].split(' ')) < MAX_LENGTH and len(p[1].split(' ')) < MAX_LENGTH
 
 
 def filter_pairs(pairs):
