@@ -1,8 +1,8 @@
 import torch
-from utils import *
+from dataloader import *
 
 
-def evaluate(encoder, decoder, sentence, max_length=None, device=None):
+def evaluate(encoder, decoder, sentence, input_lang, output_lang, max_length=None, device=None):
     assert max_length is not None
     assert device is not None
     with torch.no_grad():
