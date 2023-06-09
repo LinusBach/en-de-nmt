@@ -6,6 +6,7 @@ import torch
 
 SOS_token = 0
 EOS_token = 1
+MAX_LENGTH = 20
 
 
 class Lang:
@@ -67,9 +68,6 @@ def read_langs(path_en, path_de, sample_size):
     output_lang = Lang("de")
 
     return input_lang, output_lang, pairs
-
-
-MAX_LENGTH = 10
 
 
 eng_prefixes = (

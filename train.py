@@ -75,6 +75,7 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
     criterion = nn.CrossEntropyLoss()
 
     for i in range(1, n_iters + 1):
+        print(i)
         training_pair = training_pairs[i - 1]
         input_tensor = training_pair[0]
         target_tensor = training_pair[1]
