@@ -9,8 +9,8 @@ from dataloader import *
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
 teacher_forcing_ratio = 1
-n_iters = 300
-n_samples = -1
+n_iters = 200
+n_samples = 100
 lr = 2e-4
 
 print_every = 100
