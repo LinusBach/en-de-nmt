@@ -23,12 +23,12 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
 
     encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
 
-    loss = 0
+    loss: torch.Tensor = torch.tensor(0.0, device=device)
 
-    for ei in range(input_length):
+    for i in range(input_length):
         encoder_output, encoder_hidden = encoder(
-            input_tensor[ei], encoder_hidden)
-        encoder_outputs[ei] = encoder_output[0, 0]
+            input_tensor[i], encoder_hidden)
+        encoder_outputs[i] = encoder_output[0, 0]
 
     decoder_input = torch.tensor([[SOS_token]], device=device)
 
@@ -80,18 +80,17 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=learning_rate)
     # tensorFromPair and pairs are defined in loading data
-    training_pairs = [tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device)
-                      for _ in range(n_iters)]
+    # training_pairs = [tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device)
+    #                   for _ in range(n_iters)]
     criterion = nn.CrossEntropyLoss()
 
     for i in tqdm(range(n_iters)):
-        training_pair = training_pairs[i]
+        training_pair = tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device)
         input_tensor = training_pair[0]
         target_tensor = training_pair[1]
 
-        loss = train(input_tensor, target_tensor, encoder,
-                     decoder, encoder_optimizer, decoder_optimizer,
-                     criterion,
+        loss = train(input_tensor, target_tensor, encoder, decoder,
+                     encoder_optimizer, decoder_optimizer, criterion,
                      max_length=max_length, device=device, teacher_forcing_ratio=teacher_forcing_ratio)
         print_loss_total += loss
         plot_loss_total += loss

@@ -1,6 +1,7 @@
 from io import open
 import unicodedata
 import re
+from transformers import AutoTokenizer
 
 import torch
 
@@ -12,23 +13,21 @@ MAX_LENGTH = 30
 class Lang:
     def __init__(self, name):
         self.name = name
+        # if name == "en":
+        #     self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        # else:
+        #     self.tokenizer = AutoTokenizer.from_pretrained("bert-base-german-uncased")
         self.word2index = {}
-        self.word2count = {}
         self.index2word = {0: "SOS", 1: "EOS"}
-        self.n_words = 2  # Count SOS and EOS
-
-    def add_sentence(self, sentence):
-        for word in sentence.split(' '):
-            self.add_word(word)
-
-    def add_word(self, word):
-        if word not in self.word2index:
-            self.word2index[word] = self.n_words
-            self.word2count[word] = 1
-            self.index2word[self.n_words] = word
-            self.n_words += 1
-        else:
-            self.word2count[word] += 1
+        self.n_words = 2
+        with open("data/vocab." + name, encoding='utf-8') as f:
+            for line in f:
+                self.n_words += 1
+                word = line.strip()
+                if word not in self.word2index:
+                    self.word2index[word] = self.n_words
+                    self.index2word[self.n_words] = word
+        # self.n_words = 50002  # Count SOS and EOS
 
 
 # Turn a Unicode string to plain ASCII, thanks to
@@ -94,9 +93,6 @@ def prepare_data(path_en, path_de, sample_size=-1):
     pairs = filter_pairs(pairs)
     print("Trimmed to %s sentence pairs" % len(pairs))
     print("Counting words...")
-    for pair in pairs:
-        input_lang.add_sentence(pair[0])
-        output_lang.add_sentence(pair[1])
     print("Counted words:")
     print(input_lang.name, input_lang.n_words)
     print(output_lang.name, output_lang.n_words)
@@ -104,7 +100,8 @@ def prepare_data(path_en, path_de, sample_size=-1):
 
 
 def indexes_from_sentence(lang, sentence):
-    return [lang.word2index[word] for word in sentence.split(' ')]
+    return [lang.word2index[word] if word in lang.word2index else 2 for word in sentence.split(' ')]
+    # return lang.tokenizer.encode(sentence, add_special_tokens=False)
 
 
 def tensor_from_sentence(lang, sentence, device):
