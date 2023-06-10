@@ -5,7 +5,7 @@ import torch.nn as nn
 from utils import *
 from dataloader import *
 from tqdm import tqdm
-from plot import show_plot
+from plot import plot
 import os
 
 
@@ -64,10 +64,10 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     return loss.item() / target_length
 
 
-def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_iters, print_every=1000,
-                plot_every=None, save_every=None, learning_rate=0.01, max_length=None, device="cpu",
-                teacher_forcing_ratio=0.5,
-                models_dir="model", model_name="model"):
+def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_iters,
+                print_every=1000, plot_every=None, save_every=None,
+                learning_rate=0.01, teacher_forcing_ratio=0.5, max_length=None,
+                device="cpu", models_dir="models", model_name="model", plots_dir="plots"):
     assert max_length is not None
     if not os.path.exists(models_dir):
         os.mkdir(models_dir)
@@ -110,11 +110,11 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
+            plot(plot_losses, plot_every, plots_dir=plots_dir, model_name=model_name)
 
         if i % save_every == 0:
-            # create model checkpoint
+            # create models checkpoint
             torch.save(encoder.state_dict(), os.path.join(models_dir, model_name, "encoder_{}.pt".format(i)))
             torch.save(decoder.state_dict(), os.path.join(models_dir, model_name, "decoder_{}.pt".format(i)))
 
-    show_plot(plot_losses, model_name)
     print(plot_losses)
