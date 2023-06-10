@@ -65,14 +65,19 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
 
 
 def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_iters, print_every=1000,
-                plot_every=None, learning_rate=0.01, max_length=None, device="cpu", teacher_forcing_ratio=0.5,
-                model_dir="model"):
+                plot_every=None, save_every=None, learning_rate=0.01, max_length=None, device="cpu",
+                teacher_forcing_ratio=0.5,
+                models_dir="model", model_name="model"):
     assert max_length is not None
-    if not os.path.exists(model_dir):
-        os.mkdir(model_dir)
+    if not os.path.exists(models_dir):
+        os.mkdir(models_dir)
+    if not os.path.exists(os.path.join(models_dir, model_name)):
+        os.mkdir(os.path.join(models_dir, model_name))
 
     if plot_every is None:
         plot_every = print_every
+    if save_every is None:
+        save_every = plot_every
 
     plot_losses = []
     print_loss_total = 0  # Reset every print_every
@@ -84,7 +89,7 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
     #                   for _ in range(n_iters)]
     criterion = nn.CrossEntropyLoss()
 
-    for i in tqdm(range(n_iters)):
+    for i in tqdm(range(1, n_iters + 1)):
         training_pair = tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device)
         input_tensor = training_pair[0]
         target_tensor = training_pair[1]
@@ -101,14 +106,15 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
             # print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
             #                              iter, iter / n_iters * 100, print_loss_avg))
 
-        if i % plot_every == plot_every - 1:
+        if i % plot_every == 0:
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
 
+        if i % save_every == 0:
             # create model checkpoint
-            torch.save(encoder.state_dict(), os.path.join(model_dir, "encoder_{}.pt".format(i)))
-            torch.save(decoder.state_dict(), os.path.join(model_dir, "decoder_{}.pt".format(i)))
+            torch.save(encoder.state_dict(), os.path.join(models_dir, model_name, "encoder_{}.pt".format(i)))
+            torch.save(decoder.state_dict(), os.path.join(models_dir, model_name, "decoder_{}.pt".format(i)))
 
-    show_plot(plot_losses)
+    show_plot(plot_losses, model_name)
     print(plot_losses)

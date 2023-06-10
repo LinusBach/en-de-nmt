@@ -4,11 +4,14 @@ import torch.nn.functional as F
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=None):
-        super(AttnDecoderRNN, self).__init__()
+    def __init__(self, hidden_size, output_size, num_layers=1, dropout_p=0.1, max_length=None):
         assert max_length is not None
+
+        super(AttnDecoderRNN, self).__init__()
+
         self.hidden_size = hidden_size
         self.output_size = output_size
+        self.num_layers = num_layers
         self.dropout_p = dropout_p
         self.max_length = max_length
 
@@ -16,7 +19,7 @@ class AttnDecoderRNN(nn.Module):
         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
         self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size)
+        self.gru = nn.GRU(self.hidden_size, self.hidden_size, num_layers=num_layers, dropout=dropout_p)
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, features, hidden, encoder_outputs):
@@ -38,4 +41,4 @@ class AttnDecoderRNN(nn.Module):
         return output, hidden, attn_weights
 
     def init_hidden(self, device="cpu"):
-        return torch.zeros(1, 1, self.hidden_size, device=device)
+        return torch.zeros(self.num_layers, 1, self.hidden_size, device=device)
