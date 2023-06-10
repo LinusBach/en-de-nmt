@@ -10,13 +10,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.ba
 print(f'using device: {device}')
 
 teacher_forcing_ratio = 1
-n_iters = 20
-n_samples = 100
+n_iters = 5000
+n_samples = 100000
 lr = 2e-4
-hidden_size = 1024
+hidden_size = 524
 dropout = 0.1
 
-print_every = 10
+print_every = 100
 
 input_lang, output_lang, pairs = prepare_data('data/train.en', 'data/train.de', n_samples)
 print(f'number of pairs: {len(pairs)}')
