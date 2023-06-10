@@ -115,7 +115,7 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
 
         if i % save_every == 0:
             # create model checkpoint
-            torch.save(encoder.state_dict(), os.path.join(models_dir, model_name, "encoder_{}.pt".format(i)))
-            torch.save(decoder.state_dict(), os.path.join(models_dir, model_name, "decoder_{}.pt".format(i)))
+            torch.save(encoder.state_dict(), os.path.join(models_dir, model_name, "encoder.pt"))
+            torch.save(decoder.state_dict(), os.path.join(models_dir, model_name, "decoder.pt"))
 
     print(plot_losses)

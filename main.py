@@ -10,16 +10,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.ba
 print(f'using device: {device}')
 
 models_dir = "models"
-model_name = "test"
+model_name = "6_layers_512_hidden"
 plots_dir = "plots"
 
 teacher_forcing_ratio = 1
-n_iters = 5000
-n_samples = 100000
+n_iters = 20000
+n_samples = 200000
 lr = 2e-4
-hidden_size = 524
+hidden_size = 512
+num_encoder_layers = 6
+num_decoder_layers = 6
 dropout = 0.1
-num_layers = 3
 
 print_every = 100
 plot_every = 50
@@ -28,8 +29,8 @@ save_every = 1000
 input_lang, output_lang, pairs = prepare_data('data/train.en', 'data/train.de', n_samples)
 print(f'number of pairs: {len(pairs)}')
 
-encoder1 = EncoderRNN(input_lang.n_words, hidden_size, num_layers=num_layers, dropout_p=dropout).to(device)
-attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, num_layers=num_layers, dropout_p=dropout,
+encoder1 = EncoderRNN(input_lang.n_words, hidden_size, num_layers=num_encoder_layers, dropout_p=dropout).to(device)
+attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, num_layers=num_decoder_layers, dropout_p=dropout,
                                max_length=MAX_LENGTH).to(device)
 
 train_iters(encoder1, attn_decoder1, pairs, input_lang, output_lang, n_iters,
