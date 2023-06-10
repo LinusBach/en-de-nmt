@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --time=00:03:00
+#SBATCH --time=00:01:00
 #SBATCH --ntasks=1
-#SBATCH --gpus-per-node=1
+#SBATCH --gres=gpu:1
 #SBATCH --job-name=main
 #SBATCH --mem=8000
 

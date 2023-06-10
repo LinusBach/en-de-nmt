@@ -10,8 +10,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.ba
 print(f'using device: {device}')
 
 teacher_forcing_ratio = 1
-n_iters = 100
-n_samples = 1000
+n_iters = 20
+n_samples = 100
 lr = 2e-4
 hidden_size = 1024
 dropout = 0.1
