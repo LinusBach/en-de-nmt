@@ -16,8 +16,8 @@ model_name = "6_layers_512_hidden"
 plots_dir = "plots"
 
 teacher_forcing_ratio = 1
-n_iters = 500
-n_samples = 100000
+n_iters = 20000
+n_samples = 200000
 lr = 2e-4
 hidden_size = 512
 n_encoder_layers = 6
