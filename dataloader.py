@@ -11,100 +11,40 @@ MAX_LENGTH = 15
 
 
 class Lang:
-    def __init__(self, name):
+    def __init__(self, name, max_length=15):
         self.name = name
+        self.max_length = max_length
         if name == "en":
-            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+            self.n_words = 28996
         else:
-            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-german-uncased")
-        self.word2index = {}
-        self.index2word = {}
-        self.n_words = 29022
-        # self.n_words = 50002  # Count SOS and EOS
+            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-german-cased")
+            self.n_words = 30000
 
+    def tokenize(self, sentence):
+        return self.tokenizer.tokenize(sentence, add_special_tokens=True, max_length=self.max_length, truncation=True).input_ids
 
-# Turn a Unicode string to plain ASCII, thanks to
-# https://stackoverflow.com/a/518232/2809427
-def unicode_to_ascii(s):
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', s)
-        if unicodedata.category(c) != 'Mn'
-    )
-
-
-# Lowercase, trim, and remove non-letter characters
-def normalize_string(s):
-    s = unicode_to_ascii(s.lower().strip())
-    s = re.sub(r"([.!?])", r" \1", s)
-    s = re.sub(r"[^a-zA-Z.!?\-#]+", r" ", s)
-    return s
-
-
-def read_langs(path_en, path_de, sample_size, start_from_sample):
-    print("Reading lines...")
-
-    # Read the file and split into lines
-    # lines1 = open(path_en, encoding='utf-8').\
-    #     read().strip().split('\n')
-    lines1 = open(path_en, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
-
-    # lines2 = open(path_de, encoding='utf-8').\
-    #     read().strip().split('\n')
-    lines2 = open(path_de, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
-
-    print("Normalizing...")
-    # Split every line into pairs and normalize
-    pairs = [[normalize_string(s1), normalize_string(s2)] for s1, s2 in zip(lines1, lines2)]
-
-    input_lang = Lang("en")
-    output_lang = Lang("de")
-
-    return input_lang, output_lang, pairs
-
-
-eng_prefixes = (
-    "i am ", "i m ",
-    "he is", "he s ",
-    "she is", "she s ",
-    "you are", "you re ",
-    "we are", "we re ",
-    "they are", "they re "
-)
-
-
-def filter_pair(p):
-    return len(p[0].split(' ')) < MAX_LENGTH and len(p[1].split(' ')) < MAX_LENGTH
+    def decode(self, token_ids):
+        return self.tokenizer.decode(token_ids, skip_special_tokens=True)
 
 
 def filter_pairs(pairs):
-    return [pair for pair in pairs if filter_pair(pair)]
+    filtered_pairs = [pair for pair in pairs if len(pair[0]) < MAX_LENGTH and len(pair[1]) < MAX_LENGTH]
+    return [pair[0] for pair in filtered_pairs], [pair[1] for pair in filtered_pairs]
 
 
-def prepare_data(path_en, path_de, sample_size=-1, start_from_sample=0):
-    input_lang, output_lang, pairs = read_langs(path_en, path_de, sample_size, start_from_sample)
+def prepare_data(path_en, path_de, max_length, sample_size=-1, start_from_sample=0, device="cpu"):
+    input_lang = Lang("en", max_length)
+    output_lang = Lang("de", max_length)
+
+    lines1 = open(path_en, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
+    lines2 = open(path_de, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
+    pairs = [[input_lang.tokenize(line1), output_lang.tokenize(line2)] for line1, line2 in zip(lines1, lines2)]
+
     print("Read %s sentence pairs" % len(pairs))
-    pairs = filter_pairs(pairs)
-    print("Trimmed to %s sentence pairs" % len(pairs))
-    print("Counting words...")
-    print("Counted words:")
-    print(input_lang.name, input_lang.n_words)
-    print(output_lang.name, output_lang.n_words)
-    return input_lang, output_lang, pairs
+    en_pairs, de_pairs = filter_pairs(pairs)
+    en_pairs = torch.tensor(en_pairs, dtype=torch.long, device=device)
+    de_pairs = torch.tensor(de_pairs, dtype=torch.long, device=device)
+    print("Trimmed to %s sentence pairs based on length of tokenization" % len(pairs))
 
-
-def indexes_from_sentence(lang, sentence):
-    return [lang.word2index[normalize_string(word)] if normalize_string(word) in lang.word2index else 2 for word in
-            sentence.split(' ')]
-    # return lang.tokenizer.encode(sentence, add_special_tokens=False)
-
-
-def tensor_from_sentence(lang, sentence, device):
-    indexes = indexes_from_sentence(lang, sentence)
-    indexes.append(EOS_token)
-    return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
-
-
-def tensors_from_pair(pair, input_lang, output_lang, device):
-    input_tensor = tensor_from_sentence(input_lang, pair[0], device)
-    target_tensor = tensor_from_sentence(output_lang, pair[1], device)
-    return input_tensor, target_tensor
+    return input_lang, output_lang, en_pairs, de_pairs

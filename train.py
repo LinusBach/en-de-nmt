@@ -65,12 +65,12 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     return loss.item() / target_length
 
 
-def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_iters, random_sampling=True,
-                batch_size=1, patience=100, patience_interval=20, print_every=1000, plot_every=None, save_every=None,
-                learning_rate=0.01, teacher_forcing_ratio=0.5, max_length=None,
+def train_iters(encoder, decoder, input_sequences, output_sequences, n_iters, max_length, shuffling=True,
+                # batch_size=1,
+                patience=100, patience_interval=20, print_every=1000, plot_every=None, save_every=None,
+                learning_rate=0.01, teacher_forcing_ratio=0.5,
                 device="cpu", models_dir="models", model_name="model", plots_dir="plots",
                 prev_loss_history=None, prev_plot_history=None):
-    assert max_length is not None
     if not os.path.exists(models_dir):
         os.mkdir(models_dir)
     if not os.path.exists(os.path.join(models_dir, model_name)):
@@ -88,8 +88,8 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
     patience_loss_total = 0  # Reset every patience_interval
     min_interval_loss = np.inf
     steps_without_improvement = 0
-    encoder_optimizer = torch.optim.SGD(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = torch.optim.SGD(decoder.parameters(), lr=learning_rate)
+    encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=learning_rate)
+    decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=learning_rate)
     # tensorFromPair and pairs are defined in loading data
     # training_pairs = [tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device)
     #                   for _ in range(n_iters)]
@@ -97,7 +97,11 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
     encoder.train()
     decoder.train()
 
-    for i in tqdm(range(1, (n_iters // batch_size) + 1)):
+    if shuffling:
+        input_sequences = input_sequences[torch.randperm(len(input_sequences))]
+        output_sequences = output_sequences[torch.randperm(len(output_sequences))]
+
+    for i in tqdm(range(1, n_iters + 1)):
         """batch_input = []
         batch_output = torch.empty((batch_size, max_length), dtype=torch.long, device=device)
         if random_sampling:
@@ -107,12 +111,8 @@ def train_iters(encoder, decoder, pairs, input_lang: Lang, output_lang: Lang, n_
 
         input_tensor = torch.Tensor(batch_pairs[0])
         target_tensor = training_pair[1]"""
-        if random_sampling:
-            training_pair = tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device)
-        else:
-            training_pair = tensors_from_pair(pairs[i - 1], input_lang, output_lang, device=device)
-        input_tensor = training_pair[0]
-        target_tensor = training_pair[1]
+        input_tensor = input_sequences[i - 1]
+        target_tensor = output_sequences[i - 1]
 
         loss = train(input_tensor, target_tensor, encoder, decoder,
                      encoder_optimizer, decoder_optimizer, criterion,

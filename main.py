@@ -18,12 +18,14 @@ resume_training = False
 
 n_iters = 20000
 start_from_sample = 0
-random_sampling = False
+shuffling = False
 n_samples = 110000
+max_length = 15
+
 patience = 20  # early stopping
 patience_interval = 100
-batch_first = True
-batch_size = 1
+# batch_first = True
+# batch_size = 1
 
 teacher_forcing_ratio = 1
 lr = 1e-4
@@ -36,13 +38,13 @@ print_every = 100
 plot_every = 1000
 save_every = 1000
 
-input_lang, output_lang, pairs = prepare_data('data/train.en', 'data/train.de', n_samples, start_from_sample)
-print(f'number of pairs: {len(pairs)}')
+input_lang, output_lang, english_sequences, german_sequences = prepare_data('data/train.en', 'data/train.de',
+                                                                            max_length, n_samples,
+                                                                            start_from_sample, device=device)
 
-encoder = EncoderRNN(input_lang.n_words, hidden_size, num_layers=n_encoder_layers, dropout_p=dropout,
-                     batch_first=batch_first).to(device)
+encoder = EncoderRNN(input_lang.n_words, hidden_size, num_layers=n_encoder_layers, dropout_p=dropout).to(device)
 attn_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words, num_layers=n_decoder_layers,
-                              dropout_p=dropout, max_length=MAX_LENGTH, batch_first=batch_first).to(device)
+                              dropout_p=dropout, max_length=MAX_LENGTH).to(device)
 
 if resume_training:
     encoder.load_state_dict(torch.load(os.path.join(models_dir, model_name, "encoder.pt"), map_location=device))
@@ -53,10 +55,10 @@ else:
     prev_loss_history = None
     prev_plot_history = None
 
-train_iters(encoder, attn_decoder, pairs, input_lang, output_lang, n_iters, random_sampling=True, patience=patience,
-            patience_interval=patience_interval, batch_size=batch_size,
+train_iters(encoder, attn_decoder, english_sequences, german_sequences, n_iters, max_length=MAX_LENGTH,
+            shuffling=shuffling, patience=patience, patience_interval=patience_interval,  # batch_size=batch_size,
             print_every=print_every, plot_every=plot_every, save_every=save_every,
-            learning_rate=lr, teacher_forcing_ratio=teacher_forcing_ratio, max_length=MAX_LENGTH,
+            learning_rate=lr, teacher_forcing_ratio=teacher_forcing_ratio,
             device=device, models_dir=models_dir, model_name=model_name, plots_dir=plots_dir,
             prev_loss_history=prev_loss_history, prev_plot_history=prev_plot_history)
 # evaluate(encoder, attn_decoder, "announcement", input_lang, output_lang, max_length=MAX_LENGTH, device=device)

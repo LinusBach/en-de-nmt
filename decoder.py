@@ -4,8 +4,7 @@ import torch.nn.functional as F
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, num_layers=1, dropout_p=0.1, max_length=None, batch_first=True):
-        assert max_length is not None
+    def __init__(self, hidden_size, output_size, num_layers, dropout_p, max_length, batch_first=False):
 
         super(AttnDecoderRNN, self).__init__()
 

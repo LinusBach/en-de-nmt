@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers=1, dropout_p=0.1, batch_first=True):
+    def __init__(self, input_size, hidden_size, num_layers, dropout_p, batch_first=False):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
