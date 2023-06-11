@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers=1, dropout_p=0.1):
+    def __init__(self, input_size, hidden_size, num_layers=1, dropout_p=0.1, batch_first=True):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -11,7 +11,7 @@ class EncoderRNN(nn.Module):
 
         self.embedding = nn.Embedding(input_size, hidden_size)
         self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(hidden_size, hidden_size, num_layers=num_layers)
+        self.gru = nn.GRU(hidden_size, hidden_size, num_layers=num_layers, dropout=dropout_p, batch_first=batch_first)
 
     def forward(self, features, hidden):
         embedded = self.embedding(features).view(1, 1, -1)

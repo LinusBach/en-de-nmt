@@ -7,26 +7,19 @@ import torch
 
 SOS_token = 0
 EOS_token = 1
-MAX_LENGTH = 30
+MAX_LENGTH = 15
 
 
 class Lang:
     def __init__(self, name):
         self.name = name
-        # if name == "en":
-        #     self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-        # else:
-        #     self.tokenizer = AutoTokenizer.from_pretrained("bert-base-german-uncased")
+        if name == "en":
+            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained("bert-base-german-uncased")
         self.word2index = {}
-        self.index2word = {0: "SOS", 1: "EOS"}
-        self.n_words = 2
-        with open("data/vocab." + name, encoding='utf-8') as f:
-            for line in f:
-                self.n_words += 1
-                word = line.strip()
-                if word not in self.word2index:
-                    self.word2index[word] = self.n_words
-                    self.index2word[self.n_words] = word
+        self.index2word = {}
+        self.n_words = 29022
         # self.n_words = 50002  # Count SOS and EOS
 
 
@@ -47,17 +40,17 @@ def normalize_string(s):
     return s
 
 
-def read_langs(path_en, path_de, sample_size):
+def read_langs(path_en, path_de, sample_size, start_from_sample):
     print("Reading lines...")
 
     # Read the file and split into lines
     # lines1 = open(path_en, encoding='utf-8').\
     #     read().strip().split('\n')
-    lines1 = open(path_en, encoding='utf-8').readlines()[:sample_size]
+    lines1 = open(path_en, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
 
     # lines2 = open(path_de, encoding='utf-8').\
     #     read().strip().split('\n')
-    lines2 = open(path_de, encoding='utf-8').readlines()[:sample_size]
+    lines2 = open(path_de, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
 
     print("Normalizing...")
     # Split every line into pairs and normalize
@@ -87,8 +80,8 @@ def filter_pairs(pairs):
     return [pair for pair in pairs if filter_pair(pair)]
 
 
-def prepare_data(path_en, path_de, sample_size=-1):
-    input_lang, output_lang, pairs = read_langs(path_en, path_de, sample_size)
+def prepare_data(path_en, path_de, sample_size=-1, start_from_sample=0):
+    input_lang, output_lang, pairs = read_langs(path_en, path_de, sample_size, start_from_sample)
     print("Read %s sentence pairs" % len(pairs))
     pairs = filter_pairs(pairs)
     print("Trimmed to %s sentence pairs" % len(pairs))
@@ -100,7 +93,8 @@ def prepare_data(path_en, path_de, sample_size=-1):
 
 
 def indexes_from_sentence(lang, sentence):
-    return [lang.word2index[word] if word in lang.word2index else 2 for word in sentence.split(' ')]
+    return [lang.word2index[normalize_string(word)] if normalize_string(word) in lang.word2index else 2 for word in
+            sentence.split(' ')]
     # return lang.tokenizer.encode(sentence, add_special_tokens=False)
 
 
