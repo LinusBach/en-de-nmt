@@ -16,6 +16,7 @@ class EncoderRNN(nn.Module):
     def forward(self, features, hidden):
         embedded = self.embedding(features).view(1, 1, -1)
         embedded = self.dropout(embedded)
+        # print(embedded.shape, hidden.shape)
         output, hidden = self.gru(embedded, hidden)
         return output, hidden
 

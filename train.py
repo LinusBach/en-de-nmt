@@ -27,12 +27,14 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     loss: torch.Tensor = torch.tensor(0.0, device=device)
 
     for i in range(input_length):
+        # print(input_tensor.shape, input_tensor[i])
         encoder_output, encoder_hidden = encoder(
             input_tensor[i], encoder_hidden)
         encoder_outputs[i] = encoder_output[0, 0]
 
-    decoder_input = torch.tensor([[SOS_token]], device=device)
+    # decoder_input = torch.tensor([[SOS_token]], device=device)
 
+    decoder_input = torch.tensor([[de_CLS_token]], device=device)
     decoder_hidden = encoder_hidden
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
@@ -42,6 +44,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
         for i in range(target_length):
             decoder_output, decoder_hidden, decoder_attention = decoder(
                 decoder_input, decoder_hidden, encoder_outputs)
+            # print(decoder_output.shape, target_tensor[i].shape, target_tensor[i])
             loss += criterion(decoder_output, target_tensor[i])
             decoder_input = target_tensor[i]  # Teacher forcing
 
@@ -54,7 +57,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
             decoder_input = topi.squeeze().detach()  # detach from history as input
 
             loss += criterion(decoder_output, target_tensor[i])
-            if decoder_input.item() == EOS_token:
+            if decoder_input.item() == de_SEP_token:
                 break
 
     loss.backward()
@@ -65,7 +68,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     return loss.item() / target_length
 
 
-def train_iters(encoder, decoder, input_sequences, output_sequences, n_iters, max_length, shuffling=True,
+def train_iters(encoder, decoder, input_sequences, output_sequences, n_iters, max_length, shuffling=False,
                 # batch_size=1,
                 patience=100, patience_interval=20, print_every=1000, plot_every=None, save_every=None,
                 learning_rate=0.01, teacher_forcing_ratio=0.5,
@@ -98,8 +101,8 @@ def train_iters(encoder, decoder, input_sequences, output_sequences, n_iters, ma
     decoder.train()
 
     if shuffling:
-        input_sequences = input_sequences[torch.randperm(len(input_sequences))]
-        output_sequences = output_sequences[torch.randperm(len(output_sequences))]
+        input_sequences = random.sample(input_sequences, len(input_sequences))
+        output_sequences = random.sample(output_sequences, len(output_sequences))
 
     for i in tqdm(range(1, n_iters + 1)):
         """batch_input = []

@@ -2,12 +2,7 @@ from io import open
 import unicodedata
 import re
 from transformers import AutoTokenizer
-
 import torch
-
-SOS_token = 0
-EOS_token = 1
-MAX_LENGTH = 15
 
 
 class Lang:
@@ -22,14 +17,14 @@ class Lang:
             self.n_words = 30000
 
     def tokenize(self, sentence):
-        return self.tokenizer.tokenize(sentence, add_special_tokens=True, max_length=self.max_length, truncation=True).input_ids
+        return self.tokenizer(sentence, add_special_tokens=True, max_length=self.max_length, truncation=True).input_ids
 
     def decode(self, token_ids):
         return self.tokenizer.decode(token_ids, skip_special_tokens=True)
 
 
-def filter_pairs(pairs):
-    filtered_pairs = [pair for pair in pairs if len(pair[0]) < MAX_LENGTH and len(pair[1]) < MAX_LENGTH]
+def filter_pairs(pairs, max_length):
+    filtered_pairs = [pair for pair in pairs if len(pair[0]) < max_length and len(pair[1]) < max_length]
     return [pair[0] for pair in filtered_pairs], [pair[1] for pair in filtered_pairs]
 
 
@@ -42,9 +37,9 @@ def prepare_data(path_en, path_de, max_length, sample_size=-1, start_from_sample
     pairs = [[input_lang.tokenize(line1), output_lang.tokenize(line2)] for line1, line2 in zip(lines1, lines2)]
 
     print("Read %s sentence pairs" % len(pairs))
-    en_pairs, de_pairs = filter_pairs(pairs)
-    en_pairs = torch.tensor(en_pairs, dtype=torch.long, device=device)
-    de_pairs = torch.tensor(de_pairs, dtype=torch.long, device=device)
+    en_sequences, de_sequences = filter_pairs(pairs, max_length)
+    en_sequences = [torch.LongTensor(sequence).view(-1, 1).to(device) for sequence in en_sequences]
+    de_sequences = [torch.LongTensor(sequence).view(-1, 1).to(device) for sequence in de_sequences]
     print("Trimmed to %s sentence pairs based on length of tokenization" % len(pairs))
 
-    return input_lang, output_lang, en_pairs, de_pairs
+    return input_lang, output_lang, en_sequences, de_sequences
