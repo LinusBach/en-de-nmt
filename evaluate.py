@@ -1,9 +1,26 @@
 import torch
 from utils import *
 from dataloader import Lang
+from nltk.translate.bleu_score import sentence_bleu
+import numpy as np
+from tqdm import tqdm
 
 
-def evaluate(encoder, decoder, sentence, input_lang: Lang, output_lang: Lang, max_length, device):
+def evaluate(encoder, decoder, input_sentences, reference_sentences, input_lang: Lang, output_lang: Lang, max_length,
+             device):
+    bleu_scores = []
+
+    for i in range(len(input_sentences)):
+        prediction, _ = inference(encoder, decoder, input_sentences[i], input_lang, output_lang, max_length, device)
+        # print("evaluating: ", input_sentences[i], " -> ", prediction, " vs ", reference_sentences[i])
+        bleu_score = sentence_bleu(reference_sentences[i], prediction)
+        bleu_scores.append(bleu_score)
+
+    # print("BLEU score: ", np.mean(bleu_scores))
+    return np.mean(bleu_scores)
+
+
+def inference(encoder, decoder, sentence, input_lang: Lang, output_lang: Lang, max_length, device):
     encoder.eval()
     decoder.eval()
 

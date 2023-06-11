@@ -1,6 +1,4 @@
 from io import open
-import unicodedata
-import re
 from transformers import AutoTokenizer
 import torch
 
@@ -32,14 +30,15 @@ def prepare_data(path_en, path_de, max_length, sample_size=-1, start_from_sample
     input_lang = Lang("en", max_length)
     output_lang = Lang("de", max_length)
 
-    lines1 = open(path_en, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
-    lines2 = open(path_de, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
-    pairs = [[input_lang.tokenize(line1), output_lang.tokenize(line2)] for line1, line2 in zip(lines1, lines2)]
+    lines_english = open(path_en, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
+    lines_german = open(path_de, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
+    pairs = [[input_lang.tokenize(line_english), output_lang.tokenize(line_german)]
+             for line_english, line_german in zip(lines_english, lines_german)]
 
     print("Read %s sentence pairs" % len(pairs))
     en_sequences, de_sequences = filter_pairs(pairs, max_length)
     en_sequences = [torch.LongTensor(sequence).view(-1, 1).to(device) for sequence in en_sequences]
     de_sequences = [torch.LongTensor(sequence).view(-1, 1).to(device) for sequence in de_sequences]
-    print("Trimmed to %s sentence pairs based on length of tokenization" % len(pairs))
+    print("Trimmed to %s sentence pairs based on length of tokenization" % len(en_sequences))
 
     return input_lang, output_lang, en_sequences, de_sequences

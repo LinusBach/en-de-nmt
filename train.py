@@ -1,6 +1,4 @@
 import random
-import time
-import torch
 import torch.nn as nn
 from utils import *
 from dataloader import *
@@ -8,6 +6,7 @@ from tqdm import tqdm
 from plot import plot
 import os
 import numpy as np
+from evaluate import evaluate
 
 
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
@@ -68,7 +67,9 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     return loss.item() / target_length
 
 
-def train_iters(encoder, decoder, input_sequences, output_sequences, n_iters, max_length, shuffling=False,
+def train_iters(encoder, decoder, input_sequences, output_sequences,
+                validation_input_sentences, validation_output_sentences, input_lang, output_lang, n_iters, max_length,
+                shuffling=False,
                 # batch_size=1,
                 patience=100, patience_interval=20, print_every=1000, plot_every=None, save_every=None,
                 learning_rate=0.01, teacher_forcing_ratio=0.5,
@@ -78,6 +79,8 @@ def train_iters(encoder, decoder, input_sequences, output_sequences, n_iters, ma
         os.mkdir(models_dir)
     if not os.path.exists(os.path.join(models_dir, model_name)):
         os.mkdir(os.path.join(models_dir, model_name))
+    if not os.path.exists(plots_dir):
+        os.mkdir(plots_dir)
 
     if plot_every is None:
         plot_every = print_every
@@ -86,6 +89,7 @@ def train_iters(encoder, decoder, input_sequences, output_sequences, n_iters, ma
 
     losses = [] if prev_loss_history is None else prev_loss_history
     plot_losses = [] if prev_plot_history is None else prev_plot_history
+    eval_losses = []
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
     patience_loss_total = 0  # Reset every patience_interval
@@ -132,11 +136,20 @@ def train_iters(encoder, decoder, input_sequences, output_sequences, n_iters, ma
             #                              iter, iter / n_iters * 100, print_loss_avg))
 
         if i % plot_every == 0:
+            eval_loss = evaluate(encoder, decoder, validation_input_sentences, validation_output_sentences,
+                                 input_lang, output_lang, max_length=max_length, device=device)
+            eval_losses.append(eval_loss)
+            # print("Evaluation loss: ", eval_loss)
+            plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name + "_validation")
+            encoder.train()
+            decoder.train()
+
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
             plot(plot_losses, plot_every, plots_dir=plots_dir, model_name=model_name)
             np.save(os.path.join(plots_dir, model_name + "_plot_history.npy"), np.array(plot_losses))
+            np.save(os.path.join(plots_dir, model_name + "_eval_history.npy"), np.array(eval_losses))
 
         if i % save_every == 0:
             # create models checkpoint
