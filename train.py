@@ -6,7 +6,7 @@ from tqdm import tqdm
 from plot import plot
 import os
 import numpy as np
-from evaluate import evaluate
+from evaluate import evaluate_bleu
 
 
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
@@ -136,10 +136,10 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
             #                              iter, iter / n_iters * 100, print_loss_avg))
 
         if i % plot_every == 0:
-            eval_loss = evaluate(encoder, decoder, validation_input_sentences, validation_output_sentences,
-                                 input_lang, output_lang, max_length=max_length, device=device)
-            eval_losses.append(eval_loss)
-            # print("Evaluation loss: ", eval_loss)
+            eval_score = evaluate_bleu(encoder, decoder, validation_input_sentences, validation_output_sentences,
+                                       input_lang, output_lang, max_length=max_length, device=device)
+            eval_losses.append(eval_score)
+            # print("Evaluation loss: ", eval_score)
             plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name + "_validation")
             encoder.train()
             decoder.train()

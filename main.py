@@ -11,42 +11,47 @@ import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 print(f'using device: {device}')
 
-n_iters = 40000
-start_from_sample = 0
+initial_validation_size = 5000
+start_from_sample = initial_validation_size
 shuffling = False
 n_samples = 500000
-max_length = 20  # max length of 30 retains around 1/3 of the data
+max_length = 20  # max length of 30 retains around 1/3 of the data; 20 => 1/9
+n_iters = 50000
 
 input_lang, output_lang, english_sequences, german_sequences = prepare_data('data/train.en', 'data/train.de',
                                                                             max_length, n_samples,
                                                                             start_from_sample, device=device)
 
-validation_size = 1000
-validation_english = open("data/newstest2015.en", encoding='utf-8').readlines()[:validation_size]
-validation_english = [line for line in validation_english if len(input_lang.tokenize(line)) < max_length]
-validation_german = open("data/newstest2015.de", encoding='utf-8').readlines()[:validation_size]
-validation_german = [line for line in validation_german if len(output_lang.tokenize(line)) < max_length]
+validation_english = open("data/train.en", encoding='utf-8').readlines()[:initial_validation_size]
+validation_german = open("data/train.de", encoding='utf-8').readlines()[:initial_validation_size]
+zipped = list(zip(validation_english, validation_german))
+validation_english = [english for english, german in zipped
+                      if len(input_lang.tokenize_without_truncation(english)) < max_length
+                      and len(output_lang.tokenize_without_truncation(german)) < max_length]
+validation_german = [german for english, german in zipped
+                     if len(input_lang.tokenize_without_truncation(english)) < max_length
+                     and len(output_lang.tokenize_without_truncation(german)) < max_length]
 
-print_every = 100
+print_every = 1000
 plot_every = 1000
 save_every = 1000
 
-patience = 10  # early stopping
+patience = 20  # early stopping
 patience_interval = 1000
 # batch_first = True
 # batch_size = 1
 
 n_hyperparams = 4
-hyperparams = {"model_name": ["1e-4_lr_320_hidden_4_layers_10p_dropout",
-                              "3e-5_lr_320_hidden_5_layers_30p_dropout",
-                              "3e-4_lr_320_hidden_4_layers_20p_dropout",
-                              "1e-3_lr_256_hidden_4_layers_20p_dropout"],
-               "teacher_forcing_ratio": [1, 1, 1, 1],
-               "lr": [1e-4, 3e-5, 3e-4, 1e-3],
-               "hidden_size": [320, 320, 320, 256],
-               "n_encoder_layers": [4, 5, 4, 3],
-               "n_decoder_layers": [4, 5, 4, 3],
-               "dropout": [0.1, 0.3, 0.2, 0.2]}
+hyperparams = {"model_name": ["50p_tfr_1e-4_lr_320_hidden_4_layers_10p_dropout",
+                              "80p_tfr_3e-4_lr_320_hidden_5_layers_30p_dropout",
+                              "100p_tfr_2e-4_lr_400_hidden_8_layers_60p_dropout",
+                              "100p_tfr_1e-4_lr_320_hidden_6_layers_40p_dropout"],
+               "teacher_forcing_ratio": [0.5, 0.8, 1, 1],
+               "lr": [1e-4, 3e-4, 2e-4, 1e-4],
+               "hidden_size": [320, 320, 400, 320],
+               "n_encoder_layers": [4, 5, 8, 6],
+               "n_decoder_layers": [4, 5, 8, 6],
+               "dropout": [0.1, 0.3, 0.6, 0.4]}
 
 for i in range(n_hyperparams):
     models_dir = "models"

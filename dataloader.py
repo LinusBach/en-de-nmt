@@ -17,6 +17,9 @@ class Lang:
     def tokenize(self, sentence):
         return self.tokenizer(sentence, add_special_tokens=True, max_length=self.max_length, truncation=True).input_ids
 
+    def tokenize_without_truncation(self, sentence):
+        return self.tokenizer(sentence, add_special_tokens=True).input_ids
+
     def decode(self, token_ids):
         return self.tokenizer.decode(token_ids, skip_special_tokens=True)
 
@@ -32,7 +35,8 @@ def prepare_data(path_en, path_de, max_length, sample_size=-1, start_from_sample
 
     lines_english = open(path_en, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
     lines_german = open(path_de, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
-    pairs = [[input_lang.tokenize(line_english), output_lang.tokenize(line_german)]
+    pairs = [[input_lang.tokenize_without_truncation(line_english),
+              output_lang.tokenize_without_truncation(line_german)]
              for line_english, line_german in zip(lines_english, lines_german)]
 
     print("Read %s sentence pairs" % len(pairs))
