@@ -6,7 +6,7 @@ from tqdm import tqdm
 from plot import plot
 import os
 import numpy as np
-from evaluate import evaluate_bleu
+from evaluate import evaluate_loss
 
 
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
@@ -26,12 +26,9 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     loss: torch.Tensor = torch.tensor(0.0, device=device)
 
     for i in range(input_length):
-        # print(input_tensor.shape, input_tensor[i])
         encoder_output, encoder_hidden = encoder(
             input_tensor[i], encoder_hidden)
         encoder_outputs[i] = encoder_output[0, 0]
-
-    # decoder_input = torch.tensor([[SOS_token]], device=device)
 
     decoder_input = torch.tensor([[de_CLS_token]], device=device)
     decoder_hidden = encoder_hidden
@@ -72,7 +69,7 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
                 shuffling=False,
                 # batch_size=1,
                 patience=100, patience_interval=20, print_every=1000, plot_every=None, save_every=None,
-                learning_rate=0.01, teacher_forcing_ratio=0.5,
+                learning_rate=0.01, weight_decay=1e-5, teacher_forcing_ratio=0.5,
                 device="cpu", models_dir="models", model_name="model", plots_dir="plots",
                 prev_loss_history=None, prev_plot_history=None):
     if not os.path.exists(models_dir):
@@ -95,8 +92,8 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
     patience_loss_total = 0  # Reset every patience_interval
     min_interval_loss = np.inf
     steps_without_improvement = 0
-    encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=learning_rate)
+    encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
+    decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
     # tensorFromPair and pairs are defined in loading data
     # training_pairs = [tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device)
     #                   for _ in range(n_iters)]
@@ -136,10 +133,10 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
             #                              iter, iter / n_iters * 100, print_loss_avg))
 
         if i % plot_every == 0:
-            eval_score = evaluate_bleu(encoder, decoder, validation_input_sentences, validation_output_sentences,
-                                       input_lang, output_lang, max_length=max_length, device=device)
-            eval_losses.append(eval_score)
-            # print("Evaluation loss: ", eval_score)
+            eval_loss = evaluate_loss(encoder, decoder, validation_input_sentences, validation_output_sentences,
+                                      input_lang, output_lang, max_length=max_length, device=device)
+            eval_losses.append(eval_loss)
+            # print("Evaluation loss: ", eval_loss)
             plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name + "_validation")
             encoder.train()
             decoder.train()

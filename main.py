@@ -11,18 +11,18 @@ import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 print(f'using device: {device}')
 
-initial_validation_size = 5000
+initial_validation_size = 200
 start_from_sample = initial_validation_size
 shuffling = False
-n_samples = 500000
-max_length = 20  # max length of 30 retains around 1/3 of the data; 20 => 1/9
-n_iters = 50000
+n_samples = 10000
+max_length = 20  # max length of 30 retains around 1/3 of the data; 20 => 1/8
+n_iters = 200000
 
 input_lang, output_lang, english_sequences, german_sequences = prepare_data('data/train.en', 'data/train.de',
                                                                             max_length, n_samples,
                                                                             start_from_sample, device=device)
 
-validation_english = open("data/train.en", encoding='utf-8').readlines()[:initial_validation_size]
+validation_english = open("data/train.en", encoding='utf-8').readlines(initial_validation_size)[:initial_validation_size]
 validation_german = open("data/train.de", encoding='utf-8').readlines()[:initial_validation_size]
 zipped = list(zip(validation_english, validation_german))
 validation_english = [english for english, german in zipped
@@ -33,25 +33,28 @@ validation_german = [german for english, german in zipped
                      and len(output_lang.tokenize_without_truncation(german)) < max_length]
 
 print_every = 1000
-plot_every = 1000
-save_every = 1000
+plot_every = 2000
+save_every = 2000
 
-patience = 20  # early stopping
+patience = 1000  # early stopping
 patience_interval = 1000
 # batch_first = True
 # batch_size = 1
 
-n_hyperparams = 4
-hyperparams = {"model_name": ["50p_tfr_1e-4_lr_320_hidden_4_layers_10p_dropout",
+n_hyperparams = 1
+hyperparams = {"model_name": ["100p_tfr_5e-5_lr_512_hidden_8_layers_60p_dropout_1e-4_weight_decay",
+                              "100p_tfr_1e-4_lr_512_hidden_8_layers_50p_dropout",
+                              "50p_tfr_1e-4_lr_320_hidden_4_layers_10p_dropout",
                               "80p_tfr_3e-4_lr_320_hidden_5_layers_30p_dropout",
                               "100p_tfr_2e-4_lr_400_hidden_8_layers_60p_dropout",
                               "100p_tfr_1e-4_lr_320_hidden_6_layers_40p_dropout"],
-               "teacher_forcing_ratio": [0.5, 0.8, 1, 1],
-               "lr": [1e-4, 3e-4, 2e-4, 1e-4],
-               "hidden_size": [320, 320, 400, 320],
-               "n_encoder_layers": [4, 5, 8, 6],
-               "n_decoder_layers": [4, 5, 8, 6],
-               "dropout": [0.1, 0.3, 0.6, 0.4]}
+               "weight_decay": [1e-4, 0, 0, 0, 0, 0],
+               "teacher_forcing_ratio": [1, 1, 0.5, 0.8, 1, 1],
+               "lr": [5e-5, 1e-4, 1e-4, 3e-4, 2e-4, 1e-4],
+               "hidden_size": [512, 512, 320, 320, 400, 320],
+               "n_encoder_layers": [8, 8, 4, 5, 8, 6],
+               "n_decoder_layers": [8, 8, 4, 5, 8, 6],
+               "dropout": [0.6, 0.5, 0.1, 0.3, 0.6, 0.4]}
 
 for i in range(n_hyperparams):
     models_dir = "models"
@@ -65,6 +68,7 @@ for i in range(n_hyperparams):
     n_encoder_layers = hyperparams["n_encoder_layers"][i]
     n_decoder_layers = hyperparams["n_decoder_layers"][i]
     dropout = hyperparams["dropout"][i]
+    weight_decay = hyperparams["weight_decay"][i]
 
     if resume_training:
         encoder = torch.load(os.path.join(models_dir, model_name, "encoder.pt"), map_location=device)
@@ -84,6 +88,6 @@ for i in range(n_hyperparams):
                 input_lang, output_lang, n_iters, max_length=max_length,
                 shuffling=shuffling, patience=patience, patience_interval=patience_interval,  # batch_size=batch_size,
                 print_every=print_every, plot_every=plot_every, save_every=save_every,
-                learning_rate=lr, teacher_forcing_ratio=teacher_forcing_ratio,
+                learning_rate=lr, weight_decay=weight_decay, teacher_forcing_ratio=teacher_forcing_ratio,
                 device=device, models_dir=models_dir, model_name=model_name, plots_dir=plots_dir,
                 prev_loss_history=prev_loss_history, prev_plot_history=prev_plot_history)

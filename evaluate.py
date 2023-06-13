@@ -14,7 +14,7 @@ def evaluate_loss(encoder, decoder, input_sentences, target_sentences, input_lan
     total_loss = 0
     criterion = torch.nn.CrossEntropyLoss()
 
-    for i in tqdm(range(len(input_sentences))):
+    for i in range(len(input_sentences)):
         input_tensor = torch.LongTensor(input_lang.tokenize(input_sentences[i])).view(-1, 1).to(device)
         target_tensor = torch.LongTensor(output_lang.tokenize(target_sentences[i])).view(-1, 1).to(device)
 
