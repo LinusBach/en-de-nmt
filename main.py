@@ -57,7 +57,7 @@ hyperparams = {"model_name": ["100p_tfr_5e-5_lr_512_hidden_8_layers_60p_dropout_
                "dropout": [0.6, 0.5, 0.1, 0.3, 0.6, 0.4]}
 
 for i in range(n_hyperparams):
-    models_dir = "models"
+    models_dir = "models_gru"
     model_name = hyperparams["model_name"][i]
     plots_dir = "plots"
     resume_training = False
