@@ -27,17 +27,13 @@ validation_german = [german for english, german in zipped
                      and len(output_lang.tokenize_without_truncation(german)) < max_length]
 print(f"validation size: {len(validation_english)}")
 
-n_hyperparams = 8
-model_names = [
-    "1e-3_lr_256_hidden_4_layers_20p_dropout",
-    "1e-4_lr_320_hidden_4_layers_10p_dropout",
-    "3e-4_lr_320_hidden_4_layers_20p_dropout",
-    "3e-5_lr_320_hidden_5_layers_30p_dropout",
-    "50p_tfr_1e-4_lr_320_hidden_4_layers_10p_dropout",
-    "80p_tfr_3e-4_lr_320_hidden_5_layers_30p_dropout",
-    "100p_tfr_2e-4_lr_400_hidden_8_layers_60p_dropout",
-    "100p_tfr_1e-4_lr_320_hidden_6_layers_40p_dropout"
-]
+n_hyperparams = 6
+model_names = ["100p_tfr_5e-5_lr_512_hidden_8_layers_60p_dropout_1e-4_weight_decay",
+               "100p_tfr_1e-4_lr_512_hidden_8_layers_50p_dropout",
+               "50p_tfr_1e-4_lr_320_hidden_4_layers_10p_dropout",
+               "80p_tfr_3e-4_lr_320_hidden_5_layers_30p_dropout",
+               "100p_tfr_2e-4_lr_400_hidden_8_layers_60p_dropout",
+               "100p_tfr_1e-4_lr_320_hidden_6_layers_40p_dropout"]
 
 for i in range(n_hyperparams):
     models_dir = "models"
