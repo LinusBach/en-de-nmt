@@ -37,7 +37,7 @@ class AttnDecoderRNN(nn.Module):
                                  encoder_outputs)
 
         print("39", embedded.shape, attn_applied.shape)
-        output = torch.cat((embedded, attn_applied), 1)
+        output = torch.cat((embedded[:, 0], attn_applied[:, 0]), 1)
         print("41", output.shape)
         output = self.attn_combine(output).unsqueeze(0)
 
