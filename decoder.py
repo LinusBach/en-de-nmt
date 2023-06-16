@@ -26,8 +26,6 @@ class AttnDecoderRNN(nn.Module):
 
         attn_weights = F.softmax(
             self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
-        print(attn_weights.shape, attn_weights.unsqueeze(0).shape,
-              encoder_outputs.shape, encoder_outputs.unsqueeze(0).shape)
         attn_applied = torch.bmm(attn_weights.unsqueeze(0),
                                  encoder_outputs.unsqueeze(0))
 
@@ -35,6 +33,7 @@ class AttnDecoderRNN(nn.Module):
         output = self.attn_combine(output).unsqueeze(0)
 
         output = F.relu(output)
+        print(output.shape, hidden.shape)
         output, (hidden, cell) = self.lstm(output, (hidden, cell))
 
         output = F.log_softmax(self.out(output[0]), dim=1)

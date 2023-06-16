@@ -55,11 +55,11 @@ hyperparams = {"model_name": [
                "teacher_forcing_ratio": [1, 1, 1, 1, 1, 0.5, 0.8, 1, 1],
                "lr": [1e-5, 5e-5, 5e-5, 5e-5, 1e-4, 1e-4, 3e-4, 2e-4, 1e-4],
                "hidden_size": [100, 100, 100, 512, 512, 320, 320, 400, 320],
-               "n_encoder_layers": [1, 1, 1, 8, 8, 4, 5, 8, 6],
-               "n_decoder_layers": [1, 1, 1, 8, 8, 4, 5, 8, 6],
+               "n_encoder_layers": [2, 1, 1, 8, 8, 4, 5, 8, 6],
+               "n_decoder_layers": [2, 1, 1, 8, 8, 4, 5, 8, 6],
                "dropout": [0.3, 0.3, 0.3, 0.6, 0.5, 0.1, 0.3, 0.6, 0.4]}
 
-for i in range(1, n_hyperparams):
+for i in range(n_hyperparams):
     models_dir = "models_gru"
     model_name = hyperparams["model_name"][i]
     plots_dir = "plots"
