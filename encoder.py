@@ -14,13 +14,18 @@ class EncoderRNN(nn.Module):
         self.dropout = nn.Dropout(self.dropout_p)
         self.gru = nn.GRU(hidden_size, hidden_size, num_layers=num_layers, dropout=dropout_p, batch_first=batch_first)
 
-    def forward(self, features, hidden):
+    def forward(self, features, hidden, batch_size=None):
+        if batch_size is None:
+            batch_size = self.batch_size
+
         # print(features.shape, hidden.shape)
-        embedded = self.embedding(features).view(1, self.batch_size, -1)
+        embedded = self.embedding(features).view(1, batch_size, -1)
         embedded = self.dropout(embedded)
         # print(embedded.shape, hidden.shape)
         output, hidden = self.gru(embedded, hidden)
         return output, hidden
 
-    def init_hidden(self, device="cpu"):
-        return torch.zeros(self.num_layers, self.batch_size, self.hidden_size, device=device)
+    def init_hidden(self, batch_size=None, device="cpu"):
+        if batch_size is None:
+            batch_size = self.batch_size
+        return torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device)

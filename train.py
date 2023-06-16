@@ -43,23 +43,23 @@ def train(input_tensors, target_tensors, encoder, decoder, encoder_optimizer, de
     if use_teacher_forcing:
         # Teacher forcing: Feed the target as the next input
         for i in range(target_length):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
+            decoder_outputs, decoder_hidden, decoder_attention = decoder(
                 decoder_inputs, decoder_hidden, encoder_outputs)
-            # print(decoder_output.shape, target_tensor[i].shape, target_tensor[i])
-            # print(decoder_output.shape, target_tensors[:, i].shape)
-            loss += criterion(decoder_output, target_tensors[:, i])
+            # print(decoder_outputs.shape, target_tensor[i].shape, target_tensor[i])
+            # print(decoder_outputs.shape, target_tensors[:, i].shape)
+            loss += criterion(decoder_outputs, target_tensors[:, i])
             decoder_inputs = target_tensors[:, i]  # Teacher forcing
 
     else:
         # Without teacher forcing: use its own predictions as the next input
         for i in range(target_length):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
+            decoder_outputs, decoder_hidden, decoder_attention = decoder(
                 decoder_inputs, decoder_hidden, encoder_outputs)
-            topv, topi = decoder_output.topk(1)
+            topv, topi = decoder_outputs.topk(1)
             decoder_inputs = topi.squeeze().detach()  # detach from history as input
 
-            loss += criterion(decoder_output, target_tensors[:, i])
-            if decoder_inputs.item() == de_SEP_token:
+            loss += criterion(decoder_outputs, target_tensors[:, i])
+            if decoder_inputs.item() == de_SEP_token:  # TODO
                 break
 
     loss.backward()
@@ -71,12 +71,13 @@ def train(input_tensors, target_tensors, encoder, decoder, encoder_optimizer, de
 
 
 def train_iters(encoder, decoder, input_sequences, output_sequences,
-                validation_input_sentences, validation_output_sentences, input_lang, output_lang, n_iters, max_length,
+                validation_input_sentences, validation_output_sentences, input_lang, output_lang, epochs, max_length,
                 shuffling=False, batch_size=1, evaluation_model="microsoft/deberta-v2-xlarge-mnli",
-                patience=100, patience_interval=20, print_every=1000, plot_every=None, save_every=None,
+                patience=10, patience_interval=20, print_every=1000, plot_every=None, save_every=None,
                 learning_rate=0.01, weight_decay=1e-5, teacher_forcing_ratio=0.5,
                 device="cpu", models_dir="models", model_name="model", plots_dir="plots",
-                prev_loss_history=None, prev_plot_history=None):
+                prev_loss_history=None, prev_training_loss_plot_history=None, prev_eval_loss_plot_history=None,
+                prev_bertscore_plot_history=None):
     if not os.path.exists(models_dir):
         os.mkdir(models_dir)
     if not os.path.exists(os.path.join(models_dir, model_name)):
@@ -86,95 +87,70 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
     if not os.path.exists(os.path.join(plots_dir, model_name)):
         os.mkdir(os.path.join(plots_dir, model_name))
 
-    if plot_every is None:
-        plot_every = print_every
-    if save_every is None:
-        save_every = plot_every
-
-    losses = [] if prev_loss_history is None else prev_loss_history
-    plot_losses = [] if prev_plot_history is None else prev_plot_history
-    eval_losses = []
-    bertscores = []
-    print_loss_total = 0  # Reset every print_every
-    plot_loss_total = 0  # Reset every plot_every
-    patience_loss_total = 0  # Reset every patience_interval
-    min_interval_loss = np.inf
-    steps_without_improvement = 0
+    losses_list = [] if prev_loss_history is None else prev_loss_history
+    plot_losses = [] if prev_training_loss_plot_history is None else prev_training_loss_plot_history
+    eval_losses = [] if prev_eval_loss_plot_history is None else prev_eval_loss_plot_history
+    bertscores = [] if prev_bertscore_plot_history is None else prev_bertscore_plot_history
+    min_epoch_loss = np.inf
+    epochs_without_improvement = 0
 
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
     decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
     criterion = nn.CrossEntropyLoss()
 
-    encoder.train()
-    decoder.train()
+    for epoch in range(epochs):
+        encoder.train()
+        decoder.train()
 
-    for i in tqdm(range(1, (n_iters // batch_size) + 1)):
-        input_tensors = input_sequences[(i - 1) * batch_size: i * batch_size]
-        target_tensors = output_sequences[(i - 1) * batch_size: i * batch_size]
+        epoch_loss = 0
+        losses = []
+        for j in tqdm(range(input_sequences.size(0) // batch_size)):
+            input_tensors = input_sequences[j * batch_size: (j + 1) * batch_size]
+            # print("input_tensors.shape", input_tensors.shape)
+            target_tensors = output_sequences[j * batch_size: (j + 1) * batch_size]
 
-        loss = train(input_tensors, target_tensors, encoder, decoder,
-                     encoder_optimizer, decoder_optimizer, criterion, batch_size=batch_size,
-                     max_length=max_length, device=device, teacher_forcing_ratio=teacher_forcing_ratio)
-        print_loss_total += loss
-        plot_loss_total += loss
-        patience_loss_total += loss
-        losses.append(loss)
+            loss = train(input_tensors, target_tensors, encoder, decoder,
+                         encoder_optimizer, decoder_optimizer, criterion, batch_size=batch_size,
+                         max_length=max_length, device=device, teacher_forcing_ratio=teacher_forcing_ratio)
+            epoch_loss += loss
+            losses.append(loss)
 
-        if i % print_every == 0:
-            print_loss_avg = print_loss_total / print_every
-            print_loss_total = 0
-            # print('%s (%d %d%%) %.4f' % (timeSince(start, iter / n_iters),
-            #                              iter, iter / n_iters * 100, print_loss_avg))
+        epoch_loss /= (input_sequences.size(0) // batch_size)
+        plot_losses.append(epoch_loss)
+        losses_list.append(losses)
 
-        if i % plot_every == 0:
-            eval_loss = evaluate_loss(encoder, decoder, validation_input_sentences, validation_output_sentences,
-                                      input_lang, output_lang, max_length=max_length, device=device)
-            eval_losses.append(eval_loss)
-            bertscore = np.average(evaluate_bertscore(encoder, decoder, validation_input_sentences,
-                                                      validation_output_sentences, input_lang, output_lang,
-                                                      max_length=max_length, evaluation_model=evaluation_model,
-                                                      device=device)["f1"])
-            bertscores.append(bertscore)
-            # print("Evaluation loss: ", eval_loss)
-            plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_validation_loss")
-            plot(bertscores, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_bertscore")
-            encoder.train()
-            decoder.train()
+        eval_loss = evaluate_loss(encoder, decoder, validation_input_sentences, validation_output_sentences,
+                                  input_lang, output_lang, max_length=max_length, device=device)
+        eval_losses.append(eval_loss)
 
-            plot_loss_avg = plot_loss_total / plot_every
-            plot_losses.append(plot_loss_avg)
-            plot_loss_total = 0
-            plot(plot_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_training_loss")
-            np.save(os.path.join(plots_dir, model_name, "training_loss_plot_history.npy"), np.array(plot_losses))
-            np.save(os.path.join(plots_dir, model_name + "eval_loss_plot_history.npy"), np.array(eval_losses))
-            np.save(os.path.join(plots_dir, model_name + "bertscore_plot_history.npy"), np.array(eval_losses))
+        bertscore = np.average(evaluate_bertscore(encoder, decoder, validation_input_sentences,
+                                                  validation_output_sentences, input_lang, output_lang,
+                                                  max_length=max_length, evaluation_model=evaluation_model,
+                                                  device=device)["f1"])
+        bertscores.append(bertscore)
+        plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_validation_loss")
+        plot(bertscores, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_bertscore")
 
-        if i % save_every == 0:
-            # create models checkpoint
-            encoder.to("cpu")
-            decoder.to("cpu")
-            torch.save(encoder, os.path.join(models_dir, model_name, "encoder.pt"))
-            torch.save(decoder, os.path.join(models_dir, model_name, "decoder.pt"))
-            encoder.to(device)
-            decoder.to(device)
-            # save loss history
-            np.save(os.path.join(plots_dir, model_name, "full_training_loss_history.npy"), np.array(losses))
+        plot(plot_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_training_loss")
+        np.save(os.path.join(plots_dir, model_name, "training_loss_plot_history.npy"), np.array(plot_losses))
+        np.save(os.path.join(plots_dir, model_name, "eval_loss_plot_history.npy"), np.array(eval_losses))
+        np.save(os.path.join(plots_dir, model_name, "bertscore_plot_history.npy"), np.array(eval_losses))
 
-        if i % patience_interval == 0:
-            patience_loss_avg = patience_loss_total / patience_interval
-            patience_loss_total = 0
-            if patience_loss_avg < min_interval_loss:
-                min_interval_loss = patience_loss_avg
-                steps_without_improvement = 0
-            else:
-                steps_without_improvement += 1
-                if steps_without_improvement >= patience:
-                    # create models checkpoint
-                    encoder.to("cpu")
-                    decoder.to("cpu")
-                    torch.save(encoder, os.path.join(models_dir, model_name, "encoder.pt"))
-                    torch.save(decoder, os.path.join(models_dir, model_name, "decoder.pt"))
-                    # save loss history
-                    np.save(os.path.join(plots_dir, model_name + "_full_history.npy"), np.array(losses))
-                    print("Stopping early")
-                    break
+        # create models checkpoint
+        # encoder.to("cpu")
+        # decoder.to("cpu")
+        torch.save(encoder, os.path.join(models_dir, model_name, "encoder.pt"))
+        torch.save(decoder, os.path.join(models_dir, model_name, "decoder.pt"))
+        # encoder.to(device)
+        # decoder.to(device)
+        # save loss history
+        np.save(os.path.join(plots_dir, model_name, "full_training_loss_history.npy"), np.array(losses_list))
+
+        if epoch_loss < min_epoch_loss:
+            min_epoch_loss = epoch_loss
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= patience:
+                print("Stopping early")
+                break

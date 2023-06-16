@@ -4,7 +4,6 @@ from decoder import AttnDecoderRNN
 from encoder import EncoderRNN
 from train import train_iters
 from dataloader import prepare_data
-from io import open
 import os
 import numpy as np
 
@@ -15,8 +14,8 @@ models_dir = "models_gru"
 plots_dir = "plots"
 resume_training = False
 
-n_iters = 10000
-train_size = n_iters
+epochs = 2
+train_size = 1024
 validation_size = 2000
 evaluation_model = "facebook/bart-large-mnli"
 max_length = 30  # max length of 40 retains a little over 1/2 of the data; 30 retains around 1/3; 20 => 1/8
@@ -35,14 +34,14 @@ input_lang, output_lang, english_sequences, german_sequences, validation_english
     prepare_data(datafile_en, datafile_de, max_length, train_size, validation_size,
                  loaded_data=data_to_load, data_shuffled_and_filtered=data_shuffled_and_filtered, device=device)
 
-print_every = 1000
-plot_every = 1000
-save_every = 1000
-
 patience = 1000  # early stopping
 patience_interval = 1000
 batch_first = False
-batch_size = 128
+batch_size = 1024
+
+print_every = 1000
+plot_every = 1000
+save_every = 1000
 
 n_hyperparams = 2
 hyperparams = {"model_name": [
@@ -77,8 +76,13 @@ for i in range(n_hyperparams):
     if resume_training:
         encoder = torch.load(os.path.join(models_dir, model_name, "encoder.pt"), map_location=device)
         decoder = torch.load(os.path.join(models_dir, model_name, "decoder.pt"), map_location=device)
-        prev_loss_history = np.load(os.path.join(plots_dir, model_name + "_full_history.npy")).tolist()
-        prev_plot_history = np.load(os.path.join(plots_dir, model_name + "_plot_history.npy")).tolist()
+        prev_loss_history = np.load(os.path.join(plots_dir, model_name, "full_history.npy")).tolist()
+        prev_training_loss_plot_history = np.load(os.path.join(plots_dir, model_name,
+                                                               "training_loss_plot_history.npy")).tolist()
+        prev_eval_loss_plot_history = np.load(os.path.join(plots_dir, model_name,
+                                                           "eval_loss_plot_history.npy")).tolist()
+        prev_bertscore_plot_history = np.load(os.path.join(plots_dir, model_name,
+                                                           "bertscore_plot_history.npy")).tolist()
     else:
         encoder = EncoderRNN(input_lang.n_words, hidden_size, num_layers=n_encoder_layers, dropout_p=dropout,
                              batch_size=batch_size, batch_first=batch_first).to(device)
@@ -86,12 +90,16 @@ for i in range(n_hyperparams):
                                  dropout_p=dropout, max_length=max_length,
                                  batch_size=batch_size, batch_first=batch_first).to(device)
         prev_loss_history = None
-        prev_plot_history = None
+        prev_training_loss_plot_history = None
+        prev_eval_loss_plot_history = None
+        prev_bertscore_plot_history = None
 
     train_iters(encoder, decoder, english_sequences, german_sequences, validation_english, validation_german,
-                input_lang, output_lang, n_iters, max_length=max_length, patience=patience,
+                input_lang, output_lang, epochs, max_length=max_length, patience=patience,
                 patience_interval=patience_interval,  batch_size=batch_size, evaluation_model=evaluation_model,
                 print_every=print_every, plot_every=plot_every, save_every=save_every,
                 learning_rate=lr, weight_decay=weight_decay, teacher_forcing_ratio=teacher_forcing_ratio,
                 device=device, models_dir=models_dir, model_name=model_name, plots_dir=plots_dir,
-                prev_loss_history=prev_loss_history, prev_plot_history=prev_plot_history)
+                prev_loss_history=prev_loss_history, prev_training_loss_plot_history=prev_training_loss_plot_history,
+                prev_eval_loss_plot_history=prev_eval_loss_plot_history,
+                prev_bertscore_plot_history=prev_bertscore_plot_history)

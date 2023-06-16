@@ -22,8 +22,10 @@ class AttnDecoderRNN(nn.Module):
                           batch_first=batch_first)
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
-    def forward(self, features, hidden, encoder_outputs):
-        embedded = self.embedding(features).view(1, self.batch_size, -1)
+    def forward(self, features, hidden, encoder_outputs, batch_size=None):
+        if batch_size is None:
+            batch_size = self.batch_size
+        embedded = self.embedding(features).view(1, batch_size, -1)
         embedded = self.dropout(embedded)
 
         # print(embedded[0].shape, hidden[0].shape)
@@ -32,7 +34,7 @@ class AttnDecoderRNN(nn.Module):
         # print(attn_weights.shape, encoder_outputs.shape)
         # torch.Size([1, 30]) torch.Size([1, 1, 30]) torch.Size([30, 100]) torch.Size([1, 30, 100])
         # print(attn_weights.unsqueeze(1).shape, encoder_outputs[0].unsqueeze(0).shape)
-        # print(attn_weights.unsqueeze(1).shape, encoder_outputs.unsqueeze(0).shape)
+        # print(attn_weights.unsqueeze(1).shape, encoder_outputs.shape)
         attn_applied = torch.bmm(attn_weights.unsqueeze(1),
                                  encoder_outputs)
 
@@ -49,5 +51,7 @@ class AttnDecoderRNN(nn.Module):
         output = F.log_softmax(self.out(output[0]), dim=1)
         return output, hidden, attn_weights
 
-    def init_hidden(self, device="cpu"):
-        return torch.zeros(self.num_layers, self.batch_size, self.hidden_size, device=device)
+    def init_hidden(self, batch_size=None, device="cpu"):
+        if batch_size is None:
+            batch_size = self.batch_size
+        return torch.zeros(self.num_layers, batch_size, self.hidden_size, device=device)
