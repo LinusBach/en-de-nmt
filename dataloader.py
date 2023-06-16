@@ -16,10 +16,9 @@ class Lang:
             self.tokenizer = AutoTokenizer.from_pretrained("bert-base-german-cased")
             self.n_words = 30000
 
-    def tokenize(self, sentence, padding=True, truncation=True):
-        # TODO add left padding for input language
-        return self.tokenizer(sentence, add_special_tokens=True, max_length=self.max_length, padding=padding,
-                              truncation=truncation).input_ids
+    def tokenize(self, sentence):
+        return self.tokenizer(sentence, add_special_tokens=True, max_length=self.max_length, padding="max_length",
+                              truncation=True).input_ids
 
     def tokenize_without_truncation(self, sentence):
         return self.tokenizer(sentence, add_special_tokens=True).input_ids
@@ -50,17 +49,16 @@ def prepare_data(path_en, path_de, max_length, training_size, validation_size, l
         train_de = lines_german[validation_size: validation_size + training_size]
 
         print("Tokenizing training data...")
-        train_en = [torch.LongTensor(input_lang.tokenize(sentence, padding=True)).view(-1, 1).to(device)
-                    for sentence in train_en]
-        train_de = [torch.LongTensor(output_lang.tokenize(sentence, padding=True)).view(-1, 1).to(device)
-                    for sentence in train_de]
+        train_en = torch.LongTensor(input_lang.tokenize(train_en)).view(training_size, max_length, 1).to(device)
+        train_de = torch.LongTensor(input_lang.tokenize(train_de)).view(training_size, max_length).to(device)
         print("Finished tokenizing training data")
+        print(train_en.size(), train_de.size())
     else:
         pairs = [[line_english, line_german]
                  for line_english, line_german in zip(lines_english, lines_german)
                  if len(input_lang.tokenize_without_truncation(line_english)) < max_length and
                  len(output_lang.tokenize_without_truncation(line_german)) < max_length]
-        
+
         print("Filtered to %s sentence pairs" % len(pairs))
         seed(42)
         shuffle(pairs)
@@ -71,9 +69,9 @@ def prepare_data(path_en, path_de, max_length, training_size, validation_size, l
         train_de = [pair[1] for pair in train_pairs]
         print("Train sequences: %s" % len(train_en))
 
-        train_en = [torch.LongTensor(input_lang.tokenize(sentence, padding=True)).view(-1, 1).to(device)
+        train_en = [torch.LongTensor(input_lang.tokenize(sentence)).view(-1, 1).to(device)
                     for sentence in train_en]
-        train_de = [torch.LongTensor(output_lang.tokenize(sentence, padding=True)).view(-1, 1).to(device)
+        train_de = [torch.LongTensor(output_lang.tokenize(sentence)).view(-1).to(device)
                     for sentence in train_de]
         validation_en = [pair[0] for pair in validation_pairs]
         validation_de = [pair[1] for pair in validation_pairs]

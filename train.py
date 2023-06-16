@@ -1,4 +1,6 @@
 import random
+
+import torch
 import torch.nn as nn
 from utils import *
 from dataloader import *
@@ -9,8 +11,8 @@ import numpy as np
 from evaluation_functions import evaluate_loss, evaluate_bleu, evaluate_meteor, evaluate_bertscore
 
 
-def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
-          max_length=None, device="cpu", teacher_forcing_ratio=0.5):
+def train(input_tensors, target_tensors, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
+          batch_size=1, max_length=None, device="cpu", teacher_forcing_ratio=0.5):
     assert max_length is not None
 
     encoder_hidden = encoder.init_hidden(device=device)
@@ -18,19 +20,21 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
 
-    input_length = input_tensor.size(0)
-    target_length = target_tensor.size(0)
+    input_length = input_tensors.size(-2)
+    target_length = target_tensors.size(-2)
+    # print(target_tensors.shape)
 
-    encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
+    encoder_outputs = torch.zeros(batch_size, max_length, encoder.hidden_size, device=device)
 
     loss: torch.Tensor = torch.tensor(0.0, device=device)
 
     for i in range(input_length):
         encoder_output, encoder_hidden = encoder(
-            input_tensor[i], encoder_hidden)
-        encoder_outputs[i] = encoder_output[0, 0]
+            input_tensors[:, i], encoder_hidden)
+        # print(encoder_output.shape, encoder_outputs[:, i].shape)
+        encoder_outputs[:, i] = encoder_output[0]
 
-    decoder_input = torch.tensor([[de_CLS_token]], device=device)
+    decoder_inputs = torch.LongTensor([de_CLS_token] * batch_size).view(-1, 1).to(device)
     decoder_hidden = encoder_hidden
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
@@ -39,21 +43,22 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
         # Teacher forcing: Feed the target as the next input
         for i in range(target_length):
             decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
+                decoder_inputs, decoder_hidden, encoder_outputs)
             # print(decoder_output.shape, target_tensor[i].shape, target_tensor[i])
-            loss += criterion(decoder_output, target_tensor[i])
-            decoder_input = target_tensor[i]  # Teacher forcing
+            # print(decoder_output.shape, target_tensors[:, i].shape)
+            loss += criterion(decoder_output, target_tensors[:, i])
+            decoder_inputs = target_tensors[:, i]  # Teacher forcing
 
     else:
         # Without teacher forcing: use its own predictions as the next input
         for i in range(target_length):
             decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
+                decoder_inputs, decoder_hidden, encoder_outputs)
             topv, topi = decoder_output.topk(1)
-            decoder_input = topi.squeeze().detach()  # detach from history as input
+            decoder_inputs = topi.squeeze().detach()  # detach from history as input
 
-            loss += criterion(decoder_output, target_tensor[i])
-            if decoder_input.item() == de_SEP_token:
+            loss += criterion(decoder_output, target_tensors[:, i])
+            if decoder_inputs.item() == de_SEP_token:
                 break
 
     loss.backward()
@@ -102,12 +107,12 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
     encoder.train()
     decoder.train()
 
-    for i in tqdm(range(1, n_iters + 1)):
-        input_tensor = input_sequences[i - 1]
-        target_tensor = output_sequences[i - 1]
+    for i in tqdm(range(1, (n_iters // batch_size) + 1)):
+        input_tensors = input_sequences[(i - 1) * batch_size: i * batch_size]
+        target_tensors = output_sequences[(i - 1) * batch_size: i * batch_size]
 
-        loss = train(input_tensor, target_tensor, encoder, decoder,
-                     encoder_optimizer, decoder_optimizer, criterion,
+        loss = train(input_tensors, target_tensors, encoder, decoder,
+                     encoder_optimizer, decoder_optimizer, criterion, batch_size=batch_size,
                      max_length=max_length, device=device, teacher_forcing_ratio=teacher_forcing_ratio)
         print_loss_total += loss
         plot_loss_total += loss
@@ -124,9 +129,10 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
             eval_loss = evaluate_loss(encoder, decoder, validation_input_sentences, validation_output_sentences,
                                       input_lang, output_lang, max_length=max_length, device=device)
             eval_losses.append(eval_loss)
-            bertscore = evaluate_bertscore(encoder, decoder, validation_input_sentences, validation_output_sentences,
-                                           input_lang, output_lang, max_length=max_length,
-                                           evaluation_model=evaluation_model, device=device)
+            bertscore = np.average(evaluate_bertscore(encoder, decoder, validation_input_sentences,
+                                                      validation_output_sentences, input_lang, output_lang,
+                                                      max_length=max_length, evaluation_model=evaluation_model,
+                                                      device=device)["f1"])
             bertscores.append(bertscore)
             # print("Evaluation loss: ", eval_loss)
             plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_validation_loss")
@@ -138,8 +144,9 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
             plot(plot_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_training_loss")
-            np.save(os.path.join(plots_dir, model_name + "_plot_history.npy"), np.array(plot_losses))
-            np.save(os.path.join(plots_dir, model_name + "_eval_history.npy"), np.array(eval_losses))
+            np.save(os.path.join(plots_dir, model_name, "training_loss_plot_history.npy"), np.array(plot_losses))
+            np.save(os.path.join(plots_dir, model_name + "eval_loss_plot_history.npy"), np.array(eval_losses))
+            np.save(os.path.join(plots_dir, model_name + "bertscore_plot_history.npy"), np.array(eval_losses))
 
         if i % save_every == 0:
             # create models checkpoint
@@ -150,7 +157,7 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
             encoder.to(device)
             decoder.to(device)
             # save loss history
-            np.save(os.path.join(plots_dir, model_name + "_full_history.npy"), np.array(losses))
+            np.save(os.path.join(plots_dir, model_name, "full_training_loss_history.npy"), np.array(losses))
 
         if i % patience_interval == 0:
             patience_loss_avg = patience_loss_total / patience_interval

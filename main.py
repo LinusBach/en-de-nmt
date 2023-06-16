@@ -42,7 +42,7 @@ save_every = 1000
 patience = 1000  # early stopping
 patience_interval = 1000
 batch_first = True
-batch_size = 1
+batch_size = 3
 
 n_hyperparams = 2
 hyperparams = {"model_name": [
@@ -59,11 +59,11 @@ hyperparams = {"model_name": [
                "teacher_forcing_ratio": [1, 1, 1, 1, 1, 0.5, 0.8, 1, 1],
                "lr": [1e-5, 5e-5, 5e-5, 5e-5, 1e-4, 1e-4, 3e-4, 2e-4, 1e-4],
                "hidden_size": [100, 100, 100, 512, 512, 320, 320, 400, 320],
-               "n_encoder_layers": [1, 1, 1, 8, 8, 4, 5, 8, 6],
-               "n_decoder_layers": [1, 1, 1, 8, 8, 4, 5, 8, 6],
+               "n_encoder_layers": [2, 1, 1, 8, 8, 4, 5, 8, 6],
+               "n_decoder_layers": [2, 1, 1, 8, 8, 4, 5, 8, 6],
                "dropout": [0.3, 0.3, 0.3, 0.6, 0.5, 0.1, 0.3, 0.6, 0.4]}
 
-for i in range(1, n_hyperparams):
+for i in range(n_hyperparams):
     model_name = hyperparams["model_name"][i]
 
     teacher_forcing_ratio = hyperparams["teacher_forcing_ratio"][i]
@@ -80,9 +80,11 @@ for i in range(1, n_hyperparams):
         prev_loss_history = np.load(os.path.join(plots_dir, model_name + "_full_history.npy")).tolist()
         prev_plot_history = np.load(os.path.join(plots_dir, model_name + "_plot_history.npy")).tolist()
     else:
-        encoder = EncoderRNN(input_lang.n_words, hidden_size, num_layers=n_encoder_layers, dropout_p=dropout).to(device)
+        encoder = EncoderRNN(input_lang.n_words, hidden_size, num_layers=n_encoder_layers, dropout_p=dropout,
+                             batch_size=batch_size, batch_first=batch_first).to(device)
         decoder = AttnDecoderRNN(hidden_size, output_lang.n_words, num_layers=n_decoder_layers,
-                                 dropout_p=dropout, max_length=max_length).to(device)
+                                 dropout_p=dropout, max_length=max_length,
+                                 batch_size=batch_size, batch_first=batch_first).to(device)
         prev_loss_history = None
         prev_plot_history = None
 
