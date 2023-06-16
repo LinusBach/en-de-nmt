@@ -17,6 +17,7 @@ class Lang:
             self.n_words = 30000
 
     def tokenize(self, sentence, padding=True, truncation=True):
+        # TODO add left padding for input language
         return self.tokenizer(sentence, add_special_tokens=True, max_length=self.max_length, padding=padding,
                               truncation=truncation).input_ids
 
@@ -32,12 +33,12 @@ def filter_pairs(pairs, max_length):
     return [pair[0] for pair in filtered_pairs], [pair[1] for pair in filtered_pairs]
 
 
-def prepare_data(path_en, path_de, max_length, training_size, validation_size, device="cpu"):
+def prepare_data(path_en, path_de, max_length, training_size, validation_size, loaded_data=-1, device="cpu"):
     input_lang = Lang("en", max_length)
     output_lang = Lang("de", max_length)
 
-    lines_english = open(path_en, encoding='utf-8').readlines()
-    lines_german = open(path_de, encoding='utf-8').readlines()
+    lines_english = open(path_en, encoding='utf-8').readlines()[:loaded_data]
+    lines_german = open(path_de, encoding='utf-8').readlines()[:loaded_data]
     pairs = [[line_english, line_german]
              for line_english, line_german in zip(lines_english, lines_german)
              if len(input_lang.tokenize_without_truncation(line_english)) < max_length and
