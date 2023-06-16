@@ -4,7 +4,6 @@ from decoder import AttnDecoderRNN
 from encoder import EncoderRNN
 from train import train_iters
 from dataloader import prepare_data
-from io import open
 import os
 import numpy as np
 
