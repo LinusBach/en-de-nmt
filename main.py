@@ -10,10 +10,10 @@ import numpy as np
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu" if torch.backends.mps.is_available() else "cpu")
 print(f'using device: {device}')
 
-loaded_data = 2000000
-validation_size = 4000
+loaded_data = 2000
+validation_size = 40
 shuffling = False
-train_size = 10000
+train_size = 100
 max_length = 30  # max length of 30 retains around 1/3 of the data; 20 => 1/8
 n_iters = 10000
 

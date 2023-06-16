@@ -13,7 +13,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
           max_length=None, device="cpu", teacher_forcing_ratio=0.5):
     assert max_length is not None
 
-    encoder_hidden = encoder.init_hidden(device=device)
+    encoder_hidden, encoder_cell = encoder.init_hidden(device=device)
 
     encoder_optimizer.zero_grad()
     decoder_optimizer.zero_grad()
@@ -26,20 +26,21 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     loss: torch.Tensor = torch.tensor(0.0, device=device)
 
     for i in range(input_length):
-        encoder_output, encoder_hidden = encoder(
-            input_tensor[i], encoder_hidden)
+        encoder_output, (encoder_hidden, encoder_cell) = encoder(
+            input_tensor[i], encoder_hidden, encoder_cell)
         encoder_outputs[i] = encoder_output[0, 0]
 
     decoder_input = torch.tensor([[de_CLS_token]], device=device)
     decoder_hidden = encoder_hidden
+    decoder_cell = encoder_cell
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
 
     if use_teacher_forcing:
         # Teacher forcing: Feed the target as the next input
         for i in range(target_length):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
+            decoder_output, (decoder_hidden, decoder_cell), decoder_attention = decoder(
+                decoder_input, decoder_hidden, decoder_cell, encoder_outputs)
             # print(decoder_output.shape, target_tensor[i].shape, target_tensor[i])
             loss += criterion(decoder_output, target_tensor[i])
             decoder_input = target_tensor[i]  # Teacher forcing
@@ -47,8 +48,8 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     else:
         # Without teacher forcing: use its own predictions as the next input
         for i in range(target_length):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
+            decoder_output, (decoder_hidden, decoder_cell), decoder_attention = decoder(
+                decoder_input, decoder_hidden, decoder_cell, encoder_outputs)
             topv, topi = decoder_output.topk(1)
             decoder_input = topi.squeeze().detach()  # detach from history as input
 
