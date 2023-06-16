@@ -6,7 +6,7 @@ from tqdm import tqdm
 from plot import plot
 import os
 import numpy as np
-from evaluate import evaluate_loss
+from evaluation_functions import evaluate_loss, evaluate_bleu, evaluate_meteor, evaluate_bertscore
 
 
 def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion,
@@ -66,8 +66,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
 
 def train_iters(encoder, decoder, input_sequences, output_sequences,
                 validation_input_sentences, validation_output_sentences, input_lang, output_lang, n_iters, max_length,
-                shuffling=False,
-                # batch_size=1,
+                shuffling=False, batch_size=1, evaluation_model="microsoft/deberta-v2-xlarge-mnli",
                 patience=100, patience_interval=20, print_every=1000, plot_every=None, save_every=None,
                 learning_rate=0.01, weight_decay=1e-5, teacher_forcing_ratio=0.5,
                 device="cpu", models_dir="models", model_name="model", plots_dir="plots",
@@ -78,6 +77,8 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
         os.mkdir(os.path.join(models_dir, model_name))
     if not os.path.exists(plots_dir):
         os.mkdir(plots_dir)
+    if not os.path.exists(os.path.join(plots_dir, model_name)):
+        os.mkdir(os.path.join(plots_dir, model_name))
 
     if plot_every is None:
         plot_every = print_every
@@ -87,34 +88,21 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
     losses = [] if prev_loss_history is None else prev_loss_history
     plot_losses = [] if prev_plot_history is None else prev_plot_history
     eval_losses = []
+    bertscores = []
     print_loss_total = 0  # Reset every print_every
     plot_loss_total = 0  # Reset every plot_every
     patience_loss_total = 0  # Reset every patience_interval
     min_interval_loss = np.inf
     steps_without_improvement = 0
+
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
     decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    # tensorFromPair and pairs are defined in loading data
-    # training_pairs = [tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device)
-    #                   for _ in range(n_iters)]
     criterion = nn.CrossEntropyLoss()
+
     encoder.train()
     decoder.train()
 
-    if shuffling:
-        input_sequences = random.sample(input_sequences, len(input_sequences))
-        output_sequences = random.sample(output_sequences, len(output_sequences))
-
     for i in tqdm(range(1, n_iters + 1)):
-        """batch_input = []
-        batch_output = torch.empty((batch_size, max_length), dtype=torch.long, device=device)
-        if random_sampling:
-            batch_pairs.append(tensors_from_pair(random.choice(pairs), input_lang, output_lang, device=device))
-        else:
-            batch_pairs.append(tensors_from_pair(pairs[i - 1], input_lang, output_lang, device=device))
-
-        input_tensor = torch.Tensor(batch_pairs[0])
-        target_tensor = training_pair[1]"""
         input_tensor = input_sequences[i - 1]
         target_tensor = output_sequences[i - 1]
 
@@ -136,15 +124,20 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
             eval_loss = evaluate_loss(encoder, decoder, validation_input_sentences, validation_output_sentences,
                                       input_lang, output_lang, max_length=max_length, device=device)
             eval_losses.append(eval_loss)
+            bertscore = evaluate_bertscore(encoder, decoder, validation_input_sentences, validation_output_sentences,
+                                           input_lang, output_lang, max_length=max_length,
+                                           evaluation_model=evaluation_model, device=device)
+            bertscores.append(bertscore)
             # print("Evaluation loss: ", eval_loss)
-            plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name + "_validation")
+            plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_validation_loss")
+            plot(bertscores, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_bertscore")
             encoder.train()
             decoder.train()
 
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
-            plot(plot_losses, plot_every, plots_dir=plots_dir, model_name=model_name)
+            plot(plot_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_training_loss")
             np.save(os.path.join(plots_dir, model_name + "_plot_history.npy"), np.array(plot_losses))
             np.save(os.path.join(plots_dir, model_name + "_eval_history.npy"), np.array(eval_losses))
 

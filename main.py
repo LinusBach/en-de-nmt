@@ -8,29 +8,32 @@ from io import open
 import os
 import numpy as np
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu" if torch.backends.mps.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 print(f'using device: {device}')
 
-loaded_data = 2000000
-validation_size = 4000
-shuffling = False
-train_size = 10000
-max_length = 30  # max length of 30 retains around 1/3 of the data; 20 => 1/8
+models_dir = "models_gru"
+plots_dir = "plots"
+resume_training = False
+
 n_iters = 10000
+train_size = n_iters
+validation_size = 2000
+evaluation_model = "facebook/bart-large-mnli"
+max_length = 30  # max length of 40 retains a little over 1/2 of the data; 30 retains around 1/3; 20 => 1/8
+data_shuffled_and_filtered = True
+shuffling = False
+if data_shuffled_and_filtered:
+    datafile_en = "data/train_st_" + str(max_length) + ".en"
+    datafile_de = "data/train_st_" + str(max_length) + ".de"
+    data_to_load = train_size + validation_size
+else:
+    datafile_en = "data/train.en"
+    datafile_de = "data/train.de"
+    data_to_load = 1000000
 
 input_lang, output_lang, english_sequences, german_sequences, validation_english, validation_german = \
-    prepare_data('data/train.en', 'data/train.de', max_length, train_size, validation_size,
-                 loaded_data=loaded_data, device=device)
-
-"""validation_english = open("data/train.en", encoding='utf-8').readlines(initial_validation_size)[:initial_validation_size]
-validation_german = open("data/train.de", encoding='utf-8').readlines()[:initial_validation_size]
-zipped = list(zip(validation_english, validation_german))
-validation_english = [english for english, german in zipped
-                      if len(input_lang.tokenize_without_truncation(english)) < max_length
-                      and len(output_lang.tokenize_without_truncation(german)) < max_length]
-validation_german = [german for english, german in zipped
-                     if len(input_lang.tokenize_without_truncation(english)) < max_length
-                     and len(output_lang.tokenize_without_truncation(german)) < max_length]"""
+    prepare_data(datafile_en, datafile_de, max_length, train_size, validation_size,
+                 loaded_data=data_to_load, data_shuffled_and_filtered=data_shuffled_and_filtered, device=device)
 
 print_every = 1000
 plot_every = 1000
@@ -38,13 +41,13 @@ save_every = 1000
 
 patience = 1000  # early stopping
 patience_interval = 1000
-# batch_first = True
-# batch_size = 1
+batch_first = True
+batch_size = 1
 
 n_hyperparams = 2
 hyperparams = {"model_name": [
     "1e-5_lr_1_layer_100_hidden_more_regularization",
-    "5e-5_lr_1_layer_100_hidden_2"
+    "5e-5_lr_1_layer_100_hidden_2",
     "5e-5_lr_1_layer_100_hidden",
     "100p_tfr_5e-5_lr_512_hidden_8_layers_60p_dropout_1e-4_weight_decay",
     "100p_tfr_1e-4_lr_512_hidden_8_layers_50p_dropout",
@@ -61,10 +64,7 @@ hyperparams = {"model_name": [
                "dropout": [0.3, 0.3, 0.3, 0.6, 0.5, 0.1, 0.3, 0.6, 0.4]}
 
 for i in range(1, n_hyperparams):
-    models_dir = "models_gru"
     model_name = hyperparams["model_name"][i]
-    plots_dir = "plots"
-    resume_training = False
 
     teacher_forcing_ratio = hyperparams["teacher_forcing_ratio"][i]
     lr = hyperparams["lr"][i]
@@ -76,21 +76,19 @@ for i in range(1, n_hyperparams):
 
     if resume_training:
         encoder = torch.load(os.path.join(models_dir, model_name, "encoder.pt"), map_location=device)
-        # encoder.flatten_parameters()
-        attn_decoder = torch.load(os.path.join(models_dir, model_name, "decoder.pt"), map_location=device)
-        # attn_decoder.flatten_parameters()
+        decoder = torch.load(os.path.join(models_dir, model_name, "decoder.pt"), map_location=device)
         prev_loss_history = np.load(os.path.join(plots_dir, model_name + "_full_history.npy")).tolist()
         prev_plot_history = np.load(os.path.join(plots_dir, model_name + "_plot_history.npy")).tolist()
     else:
         encoder = EncoderRNN(input_lang.n_words, hidden_size, num_layers=n_encoder_layers, dropout_p=dropout).to(device)
-        attn_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words, num_layers=n_decoder_layers,
-                                      dropout_p=dropout, max_length=max_length).to(device)
+        decoder = AttnDecoderRNN(hidden_size, output_lang.n_words, num_layers=n_decoder_layers,
+                                 dropout_p=dropout, max_length=max_length).to(device)
         prev_loss_history = None
         prev_plot_history = None
 
-    train_iters(encoder, attn_decoder, english_sequences, german_sequences, validation_english, validation_german,
-                input_lang, output_lang, n_iters, max_length=max_length,
-                shuffling=shuffling, patience=patience, patience_interval=patience_interval,  # batch_size=batch_size,
+    train_iters(encoder, decoder, english_sequences, german_sequences, validation_english, validation_german,
+                input_lang, output_lang, n_iters, max_length=max_length, patience=patience,
+                patience_interval=patience_interval,  batch_size=batch_size, evaluation_model=evaluation_model,
                 print_every=print_every, plot_every=plot_every, save_every=save_every,
                 learning_rate=lr, weight_decay=weight_decay, teacher_forcing_ratio=teacher_forcing_ratio,
                 device=device, models_dir=models_dir, model_name=model_name, plots_dir=plots_dir,

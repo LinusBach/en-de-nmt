@@ -2,7 +2,7 @@ import torch.backends.mps
 
 from decoder import AttnDecoderRNN
 from encoder import EncoderRNN
-from evaluate import evaluate_loss
+from evaluation_functions import evaluate_loss
 from dataloader import Lang
 from io import open
 import os
