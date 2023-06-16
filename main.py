@@ -2,39 +2,96 @@ import torch.backends.mps
 
 from decoder import AttnDecoderRNN
 from encoder import EncoderRNN
-from train import *
-from evaluate import evaluate
-from dataloader import *
+from train import train_iters
+from dataloader import prepare_data
+from io import open
+import os
+import numpy as np
 
-device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu" if torch.backends.mps.is_available() else "cpu")
 print(f'using device: {device}')
 
-models_dir = "models"
-model_name = "6_layers_512_hidden"
-plots_dir = "plots"
+loaded_data = 2000000
+validation_size = 4000
+shuffling = False
+train_size = 10000
+max_length = 30  # max length of 30 retains around 1/3 of the data; 20 => 1/8
+n_iters = 10000
 
-teacher_forcing_ratio = 1
-n_iters = 20000
-n_samples = 200000
-lr = 2e-4
-hidden_size = 512
-num_encoder_layers = 6
-num_decoder_layers = 6
-dropout = 0.1
+input_lang, output_lang, english_sequences, german_sequences, validation_english, validation_german = \
+    prepare_data('data/train.en', 'data/train.de', max_length, train_size, validation_size,
+                 loaded_data=loaded_data, device=device)
 
-print_every = 100
-plot_every = 50
+"""validation_english = open("data/train.en", encoding='utf-8').readlines(initial_validation_size)[:initial_validation_size]
+validation_german = open("data/train.de", encoding='utf-8').readlines()[:initial_validation_size]
+zipped = list(zip(validation_english, validation_german))
+validation_english = [english for english, german in zipped
+                      if len(input_lang.tokenize_without_truncation(english)) < max_length
+                      and len(output_lang.tokenize_without_truncation(german)) < max_length]
+validation_german = [german for english, german in zipped
+                     if len(input_lang.tokenize_without_truncation(english)) < max_length
+                     and len(output_lang.tokenize_without_truncation(german)) < max_length]"""
+
+print_every = 1000
+plot_every = 1000
 save_every = 1000
 
-input_lang, output_lang, pairs = prepare_data('data/train.en', 'data/train.de', n_samples)
-print(f'number of pairs: {len(pairs)}')
+patience = 1000  # early stopping
+patience_interval = 1000
+# batch_first = True
+# batch_size = 1
 
-encoder1 = EncoderRNN(input_lang.n_words, hidden_size, num_layers=num_encoder_layers, dropout_p=dropout).to(device)
-attn_decoder1 = AttnDecoderRNN(hidden_size, output_lang.n_words, num_layers=num_decoder_layers, dropout_p=dropout,
-                               max_length=MAX_LENGTH).to(device)
+n_hyperparams = 2
+hyperparams = {"model_name": [
+    "1e-5_lr_1_layer_100_hidden_more_regularization",
+    "5e-5_lr_1_layer_100_hidden_2"
+    "5e-5_lr_1_layer_100_hidden",
+    "100p_tfr_5e-5_lr_512_hidden_8_layers_60p_dropout_1e-4_weight_decay",
+    "100p_tfr_1e-4_lr_512_hidden_8_layers_50p_dropout",
+    "50p_tfr_1e-4_lr_320_hidden_4_layers_10p_dropout",
+    "80p_tfr_3e-4_lr_320_hidden_5_layers_30p_dropout",
+    "100p_tfr_2e-4_lr_400_hidden_8_layers_60p_dropout",
+    "100p_tfr_1e-4_lr_320_hidden_6_layers_40p_dropout"],
+               "weight_decay": [1e-4, 1e-4, 1e-4, 1e-4, 0, 0, 0, 0, 0],
+               "teacher_forcing_ratio": [1, 1, 1, 1, 1, 0.5, 0.8, 1, 1],
+               "lr": [1e-5, 5e-5, 5e-5, 5e-5, 1e-4, 1e-4, 3e-4, 2e-4, 1e-4],
+               "hidden_size": [100, 100, 100, 512, 512, 320, 320, 400, 320],
+               "n_encoder_layers": [1, 1, 1, 8, 8, 4, 5, 8, 6],
+               "n_decoder_layers": [1, 1, 1, 8, 8, 4, 5, 8, 6],
+               "dropout": [0.3, 0.3, 0.3, 0.6, 0.5, 0.1, 0.3, 0.6, 0.4]}
 
-train_iters(encoder1, attn_decoder1, pairs, input_lang, output_lang, n_iters,
-            print_every=print_every, plot_every=plot_every, save_every=save_every,
-            learning_rate=lr, teacher_forcing_ratio=teacher_forcing_ratio, max_length=MAX_LENGTH,
-            device=device, models_dir=models_dir, model_name=model_name, plots_dir=plots_dir)
-# evaluate(encoder1, attn_decoder1, "announcement", input_lang, output_lang, max_length=MAX_LENGTH, device=device)
+for i in range(1, n_hyperparams):
+    models_dir = "models_gru"
+    model_name = hyperparams["model_name"][i]
+    plots_dir = "plots"
+    resume_training = False
+
+    teacher_forcing_ratio = hyperparams["teacher_forcing_ratio"][i]
+    lr = hyperparams["lr"][i]
+    hidden_size = hyperparams["hidden_size"][i]
+    n_encoder_layers = hyperparams["n_encoder_layers"][i]
+    n_decoder_layers = hyperparams["n_decoder_layers"][i]
+    dropout = hyperparams["dropout"][i]
+    weight_decay = hyperparams["weight_decay"][i]
+
+    if resume_training:
+        encoder = torch.load(os.path.join(models_dir, model_name, "encoder.pt"), map_location=device)
+        # encoder.flatten_parameters()
+        attn_decoder = torch.load(os.path.join(models_dir, model_name, "decoder.pt"), map_location=device)
+        # attn_decoder.flatten_parameters()
+        prev_loss_history = np.load(os.path.join(plots_dir, model_name + "_full_history.npy")).tolist()
+        prev_plot_history = np.load(os.path.join(plots_dir, model_name + "_plot_history.npy")).tolist()
+    else:
+        encoder = EncoderRNN(input_lang.n_words, hidden_size, num_layers=n_encoder_layers, dropout_p=dropout).to(device)
+        attn_decoder = AttnDecoderRNN(hidden_size, output_lang.n_words, num_layers=n_decoder_layers,
+                                      dropout_p=dropout, max_length=max_length).to(device)
+        prev_loss_history = None
+        prev_plot_history = None
+
+    train_iters(encoder, attn_decoder, english_sequences, german_sequences, validation_english, validation_german,
+                input_lang, output_lang, n_iters, max_length=max_length,
+                shuffling=shuffling, patience=patience, patience_interval=patience_interval,  # batch_size=batch_size,
+                print_every=print_every, plot_every=plot_every, save_every=save_every,
+                learning_rate=lr, weight_decay=weight_decay, teacher_forcing_ratio=teacher_forcing_ratio,
+                device=device, models_dir=models_dir, model_name=model_name, plots_dir=plots_dir,
+                prev_loss_history=prev_loss_history, prev_plot_history=prev_plot_history)
