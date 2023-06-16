@@ -41,8 +41,8 @@ save_every = 1000
 
 patience = 1000  # early stopping
 patience_interval = 1000
-batch_first = True
-batch_size = 3
+batch_first = False
+batch_size = 128
 
 n_hyperparams = 2
 hyperparams = {"model_name": [

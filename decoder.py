@@ -23,12 +23,12 @@ class AttnDecoderRNN(nn.Module):
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, features, hidden, encoder_outputs):
-        embedded = self.embedding(features).view(self.batch_size, 1, -1)
+        embedded = self.embedding(features).view(1, self.batch_size, -1)
         embedded = self.dropout(embedded)
 
-        # print(embedded[:, 0].shape, hidden[0].shape, encoder_outputs.shape)
+        # print(embedded[0].shape, hidden[0].shape)
         attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[:, 0], hidden[0]), 1)), dim=1)
+            self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
         # print(attn_weights.shape, encoder_outputs.shape)
         # torch.Size([1, 30]) torch.Size([1, 1, 30]) torch.Size([30, 100]) torch.Size([1, 30, 100])
         # print(attn_weights.unsqueeze(1).shape, encoder_outputs[0].unsqueeze(0).shape)
@@ -36,13 +36,14 @@ class AttnDecoderRNN(nn.Module):
         attn_applied = torch.bmm(attn_weights.unsqueeze(1),
                                  encoder_outputs)
 
-        print("39", embedded.shape, attn_applied.shape)
-        output = torch.cat((embedded[:, 0], attn_applied[:, 0]), 1)
-        print("41", output.shape)
+        # print("39", embedded.shape, attn_applied.shape)
+        output = torch.cat((embedded[0], attn_applied[:, 0]), 1)
+        # print("41", output.shape)
         output = self.attn_combine(output).unsqueeze(0)
 
         output = F.relu(output)
-        print(output.shape, hidden.shape)
+        # torch.Size([1, 1, 100]) torch.Size([2, 1, 100])
+        # print(output.shape, hidden.shape)
         output, hidden = self.gru(output, hidden)
 
         output = F.log_softmax(self.out(output[0]), dim=1)

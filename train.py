@@ -21,8 +21,8 @@ def train(input_tensors, target_tensors, encoder, decoder, encoder_optimizer, de
     decoder_optimizer.zero_grad()
 
     input_length = input_tensors.size(-2)
-    target_length = target_tensors.size(-2)
-    # print(target_tensors.shape)
+    target_length = target_tensors.size(-1)
+    # print(input_tensors.shape, target_tensors.shape)
 
     encoder_outputs = torch.zeros(batch_size, max_length, encoder.hidden_size, device=device)
 
@@ -36,6 +36,7 @@ def train(input_tensors, target_tensors, encoder, decoder, encoder_optimizer, de
 
     decoder_inputs = torch.LongTensor([de_CLS_token] * batch_size).view(-1, 1).to(device)
     decoder_hidden = encoder_hidden
+    # print("encoder_hidden.shape", encoder_hidden.shape)
 
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
 
