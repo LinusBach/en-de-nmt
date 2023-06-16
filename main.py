@@ -15,7 +15,7 @@ plots_dir = "plots"
 resume_training = False
 
 epochs = 2
-train_size = 1024
+train_size = 100000
 validation_size = 2000
 evaluation_model = "facebook/bart-large-mnli"
 max_length = 30  # max length of 40 retains a little over 1/2 of the data; 30 retains around 1/3; 20 => 1/8

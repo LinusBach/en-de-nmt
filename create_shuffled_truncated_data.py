@@ -1,10 +1,11 @@
 from random import shuffle, seed
 from io import open
 from dataloader import Lang
+import os
 
-max_length = 40
-f_en = "data/train_st_" + str(max_length) + ".en"
-f_de = "data/train_st_" + str(max_length) + ".de"
+max_length = 30
+f_en = os.path.join("data", "train_st_" + str(max_length) + ".en")
+f_de = os.path.join("data", "train_st_" + str(max_length) + ".de")
 
 input_lang = Lang("en", max_length)
 output_lang = Lang("de", max_length)
@@ -12,8 +13,8 @@ output_lang = Lang("de", max_length)
 seed(42)
 
 print("Reading...")
-sentences_en = open("data/train.en", encoding='utf-8').readlines()
-sentences_de = open("data/train.de", encoding='utf-8').readlines()
+sentences_en = open(os.path.join("data", "train.en"), encoding='utf-8').readlines()
+sentences_de = open(os.path.join("data", "train.de"), encoding='utf-8').readlines()
 print("Read")
 
 print("Filtering...")
@@ -26,8 +27,8 @@ print("Shuffling...")
 shuffle(pairs)
 print("Shuffled")
 
-with open(f_en, 'w+') as file1:
-    with open(f_de, 'w+') as file2:
+with open(f_en, 'w+', encoding='utf-8') as file1:
+    with open(f_de, 'w+', encoding='utf-8') as file2:
         for sentences_en, sentence_de in pairs:
             file1.write(sentences_en)
             file2.write(sentence_de)
