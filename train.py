@@ -28,6 +28,7 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     for i in range(input_length):
         encoder_output, (encoder_hidden, encoder_cell) = encoder(
             input_tensor[i], encoder_hidden, encoder_cell)
+        print(encoder_output.shape)
         encoder_outputs[i] = encoder_output[0, 0]
 
     decoder_input = torch.tensor([[de_CLS_token]], device=device)
