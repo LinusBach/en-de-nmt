@@ -92,7 +92,8 @@ def evaluate_bertscore(encoder, decoder, input_sentences, reference_sentences, i
         predictions = inference(encoder, decoder, input_sentences[i * batch_size: (i + 1) * batch_size],
                                 input_lang, output_lang, max_length, device,
                                 batch_size=batch_size)
-        bert_scores.append(bertscore.compute(predictions=predictions, references=reference_sentences,
+        bert_scores.append(bertscore.compute(predictions=predictions,
+                                             references=reference_sentences[i * batch_size: (i + 1) * batch_size],
                            model_type=evaluation_model, lang="de", device=device)["f1"])
 
     return np.average(bert_scores)
@@ -103,35 +104,37 @@ def inference(encoder, decoder, sentences, input_lang: Lang, output_lang: Lang, 
     decoder.eval()
 
     with torch.no_grad():
-        # input_tensor = tensor_from_sentence(input_lang, sentence, device=device)
-        input_tensor = torch.LongTensor(input_lang.tokenize(sentences)).view(batch_size, -1, 1).to(device)
-        input_length = input_tensor.size(-2)
-        encoder_hidden = encoder.init_hidden(device=device, batch_size=batch_size)
+        # input_tensors = tensor_from_sentence(input_lang, sentence, device=device)
+        input_tensors = torch.LongTensor(input_lang.tokenize(sentences)).view(batch_size, -1, 1).to(device)
+        input_length = input_tensors.size(-2)
+        encoder_hidden = encoder.init_hidden(batch_size=batch_size, device=device)
 
-        encoder_outputs = torch.zeros(max_length, encoder.hidden_size, device=device)
+        encoder_outputs = torch.zeros(batch_size, max_length, encoder.hidden_size, device=device)
 
         for i in range(input_length):
-            encoder_output, encoder_hidden = encoder(input_tensor[i],
-                                                     encoder_hidden)
+            encoder_output, encoder_hidden = encoder(input_tensors[:, i], encoder_hidden, batch_size=batch_size)
             encoder_outputs[i] += encoder_output[0, 0]
 
         # decoder_input = torch.tensor([[SOS_token]], device=device)  # SOS
 
-        decoder_input = torch.tensor([[de_CLS_token]], device=device)
+        decoder_inputs = torch.LongTensor([de_CLS_token] * batch_size).view(-1, 1).to(device)
         decoder_hidden = encoder_hidden
 
-        decoded_tokens = []
+        decoded_tokens_list = [[de_CLS_token] for _ in range(batch_size)]
 
         for i in range(max_length):
             decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
+                decoder_inputs, decoder_hidden, encoder_outputs, batch_size=batch_size)
             topv, topi = decoder_output.data.topk(1)
-            decoded_tokens.append(topi.item())
-            if topi.item() == de_SEP_token:
-                break
+            # print(topi.shape)
+            for j in range(batch_size):
+                decoded_tokens_list[j].append(topi[j].item())
+            # decoded_tokens.append([topi[i].item() for i in range(max_length)])
+            # if topi.item() == de_SEP_token:
+            #     break
 
-            decoder_input = topi.squeeze().detach()
+            decoder_inputs = topi.squeeze().detach()
 
-        decoded_sentence = output_lang.decode(decoded_tokens)
+        decoded_sentences = [output_lang.decode(decoded_tokens) for decoded_tokens in decoded_tokens_list]
 
-        return decoded_sentence
+        return decoded_sentences

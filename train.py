@@ -47,7 +47,9 @@ def train(input_tensors, target_tensors, encoder, decoder, encoder_optimizer, de
                 decoder_inputs, decoder_hidden, encoder_outputs)
             # print(decoder_outputs.shape, target_tensor[i].shape, target_tensor[i])
             # print(decoder_outputs.shape, target_tensors[:, i].shape)
+            # print(torch.sum(decoder_outputs, dim=1), target_tensors[:, i])
             loss += criterion(decoder_outputs, target_tensors[:, i])
+            # print("loss:", loss)
             decoder_inputs = target_tensors[:, i]  # Teacher forcing
 
     else:
@@ -96,9 +98,10 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
 
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
     decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=learning_rate, weight_decay=weight_decay)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(ignore_index=0)
 
     for epoch in range(epochs):
+        print("epoch:", epoch)
         encoder.train()
         decoder.train()
 
@@ -118,20 +121,26 @@ def train_iters(encoder, decoder, input_sequences, output_sequences,
         epoch_loss /= (input_sequences.size(0) // batch_size)
         plot_losses.append(epoch_loss)
         losses_list.append(losses)
+        print(losses)
 
         eval_loss = evaluate_loss(encoder, decoder, validation_input_sentences, validation_output_sentences,
                                   input_lang, output_lang, max_length=max_length, device=device)
         eval_losses.append(eval_loss)
 
-        bertscore = np.average(evaluate_bertscore(encoder, decoder, validation_input_sentences,
-                                                  validation_output_sentences, input_lang, output_lang,
-                                                  max_length=max_length, evaluation_model=evaluation_model,
-                                                  device=device)["f1"])
+        bertscore = evaluate_bertscore(encoder, decoder, validation_input_sentences, validation_output_sentences,
+                                       input_lang, output_lang, max_length=max_length,
+                                       evaluation_model=evaluation_model, device=device)
         bertscores.append(bertscore)
+
+        print("epoch_loss:", epoch_loss)
+        print("eval_loss:", eval_loss)
+        print("bertscore:", bertscore)
+
         plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_validation_loss")
         plot(bertscores, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_bertscore")
-
         plot(plot_losses, plot_every, plots_dir=plots_dir, model_name=model_name, suffix="_training_loss")
+
+
         np.save(os.path.join(plots_dir, model_name, "training_loss_plot_history.npy"), np.array(plot_losses))
         np.save(os.path.join(plots_dir, model_name, "eval_loss_plot_history.npy"), np.array(eval_losses))
         np.save(os.path.join(plots_dir, model_name, "bertscore_plot_history.npy"), np.array(eval_losses))

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class EncoderRNN(nn.Module):
@@ -21,8 +22,12 @@ class EncoderRNN(nn.Module):
         # print(features.shape, hidden.shape)
         embedded = self.embedding(features).view(1, batch_size, -1)
         embedded = self.dropout(embedded)
+        print("encoder - 25", embedded.shape, torch.sum(embedded, dim=2))
         # print(embedded.shape, hidden.shape)
         output, hidden = self.gru(embedded, hidden)
+        print("encoder", hidden.shape, hidden)
+        # output = F.normalize(output, dim=2)
+        # hidden = F.normalize(hidden, dim=2)
         return output, hidden
 
     def init_hidden(self, batch_size=None, device="cpu"):

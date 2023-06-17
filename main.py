@@ -14,9 +14,9 @@ models_dir = "models_gru"
 plots_dir = "plots"
 resume_training = False
 
-epochs = 2
-train_size = 100000
-validation_size = 2000
+epochs = 10
+train_size = 2000
+validation_size = 200
 evaluation_model = "facebook/bart-large-mnli"
 max_length = 30  # max length of 40 retains a little over 1/2 of the data; 30 retains around 1/3; 20 => 1/8
 data_shuffled_and_filtered = True
@@ -37,13 +37,13 @@ input_lang, output_lang, english_sequences, german_sequences, validation_english
 patience = 1000  # early stopping
 patience_interval = 1000
 batch_first = False
-batch_size = 1024
+batch_size = 128
 
 print_every = 1000
 plot_every = 1000
 save_every = 1000
 
-n_hyperparams = 2
+n_hyperparams = 1
 hyperparams = {"model_name": [
     "1e-5_lr_1_layer_100_hidden_more_regularization",
     "5e-5_lr_1_layer_100_hidden_2",
@@ -56,7 +56,7 @@ hyperparams = {"model_name": [
     "100p_tfr_1e-4_lr_320_hidden_6_layers_40p_dropout"],
                "weight_decay": [1e-4, 1e-4, 1e-4, 1e-4, 0, 0, 0, 0, 0],
                "teacher_forcing_ratio": [1, 1, 1, 1, 1, 0.5, 0.8, 1, 1],
-               "lr": [1e-5, 5e-5, 5e-5, 5e-5, 1e-4, 1e-4, 3e-4, 2e-4, 1e-4],
+               "lr": [1e-3, 5e-5, 5e-5, 5e-5, 1e-4, 1e-4, 3e-4, 2e-4, 1e-4],
                "hidden_size": [100, 100, 100, 512, 512, 320, 320, 400, 320],
                "n_encoder_layers": [2, 1, 1, 8, 8, 4, 5, 8, 6],
                "n_decoder_layers": [2, 1, 1, 8, 8, 4, 5, 8, 6],

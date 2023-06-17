@@ -26,12 +26,14 @@ class AttnDecoderRNN(nn.Module):
         if batch_size is None:
             batch_size = self.batch_size
         embedded = self.embedding(features).view(1, batch_size, -1)
+        # print("31", embedded.shape, embedded)
+        # print("32", hidden.shape, hidden)
         embedded = self.dropout(embedded)
 
         # print(embedded[0].shape, hidden[0].shape)
         attn_weights = F.softmax(
             self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
-        # print(attn_weights.shape, encoder_outputs.shape)
+        # print("34", attn_weights.shape, torch.sum(attn_weights, dim=1))
         # torch.Size([1, 30]) torch.Size([1, 1, 30]) torch.Size([30, 100]) torch.Size([1, 30, 100])
         # print(attn_weights.unsqueeze(1).shape, encoder_outputs[0].unsqueeze(0).shape)
         # print(attn_weights.unsqueeze(1).shape, encoder_outputs.shape)
@@ -48,7 +50,9 @@ class AttnDecoderRNN(nn.Module):
         # print(output.shape, hidden.shape)
         output, hidden = self.gru(output, hidden)
 
-        output = F.log_softmax(self.out(output[0]), dim=1)
+        # print("51", output.shape, self.out(output[0]).shape)
+        output = F.softmax(self.out(output[0]), dim=1)
+        # print("53", output.shape, torch.sum(output, dim=1))
         return output, hidden, attn_weights
 
     def init_hidden(self, batch_size=None, device="cpu"):
