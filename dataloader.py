@@ -1,12 +1,22 @@
+"""
+This script is used for data loading and preprocessing. It defines the Lang class, which is used to represent a
+language. The Lang class handles tokenization of text data using the HuggingFace Transformers library.
+Also, this script includes functions for reading data from text files, tokenizing the data, and filtering sentence pairs
+based on a maximum token length.
+"""
+
+
 from io import open
 from transformers import AutoTokenizer
 import torch
-from random import shuffle, seed
-from tqdm import tqdm
+from typing import List, Tuple
+
+de_CLS_token = 3
+de_SEP_token = 4
 
 
 class Lang:
-    def __init__(self, name, max_length=15):
+    def __init__(self, name: str, max_length: int = 15):
         self.name = name
         self.max_length = max_length
         if name == "en":
@@ -16,64 +26,36 @@ class Lang:
             self.tokenizer = AutoTokenizer.from_pretrained("bert-base-german-cased")
             self.n_words = 30000
 
-    def tokenize(self, sentence):
-        return self.tokenizer(sentence, add_special_tokens=True, max_length=self.max_length, padding="max_length",
-                              truncation=True).input_ids
+    def tokenize(self, sentence: str) -> List[int]:
+        return self.tokenizer(sentence, add_special_tokens=True, max_length=self.max_length, truncation=True).input_ids
 
-    def tokenize_without_truncation(self, sentence):
+    def tokenize_without_truncation(self, sentence: str) -> List[int]:
         return self.tokenizer(sentence, add_special_tokens=True).input_ids
 
-    def decode(self, token_ids):
+    def decode(self, token_ids: torch.Tensor) -> str:
         return self.tokenizer.decode(token_ids, skip_special_tokens=True)
 
 
-def filter_pairs(pairs, max_length):
+def filter_pairs(pairs: List[List[List[int]]], max_length: int) -> Tuple[List[List[int]], List[List[int]]]:
     filtered_pairs = [pair for pair in pairs if len(pair[0]) < max_length and len(pair[1]) < max_length]
     return [pair[0] for pair in filtered_pairs], [pair[1] for pair in filtered_pairs]
 
 
-def prepare_data(path_en, path_de, max_length, training_size, validation_size, loaded_data=-1,
-                 data_shuffled_and_filtered=False, device="cpu"):
+def prepare_data(path_en: str, path_de: str, max_length: int, sample_size: int = -1, start_from_sample: int = 0,
+                 device: torch.device = "cpu") -> Tuple[Lang, Lang, List[torch.Tensor], List[torch.Tensor]]:
     input_lang = Lang("en", max_length)
     output_lang = Lang("de", max_length)
 
-    with open(path_en, encoding='utf-8') as f:
-        lines_english = [f.readline() for _ in range(loaded_data)]
-    with open(path_de, encoding='utf-8') as f:
-        lines_german = [f.readline() for _ in range(loaded_data)]
+    lines_english = open(path_en, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
+    lines_german = open(path_de, encoding='utf-8').readlines()[start_from_sample:sample_size + start_from_sample]
+    pairs = [[input_lang.tokenize_without_truncation(line_english),
+              output_lang.tokenize_without_truncation(line_german)]
+             for line_english, line_german in zip(lines_english, lines_german)]
 
-    if data_shuffled_and_filtered:
-        validation_en = lines_english[:validation_size]
-        train_en = lines_english[validation_size: validation_size + training_size]
-        validation_de = lines_german[:validation_size]
-        train_de = lines_german[validation_size: validation_size + training_size]
+    print("Read %s sentence pairs" % len(pairs))
+    en_sequences, de_sequences = filter_pairs(pairs, max_length)
+    en_sequences = [torch.LongTensor(sequence).view(-1, 1).to(device) for sequence in en_sequences]
+    de_sequences = [torch.LongTensor(sequence).view(-1, 1).to(device) for sequence in de_sequences]
+    print("Trimmed to %s sentence pairs based on length of tokenization" % len(en_sequences))
 
-        print("Tokenizing training data...")
-        train_en = torch.LongTensor(input_lang.tokenize(train_en)).view(training_size, max_length, 1).to(device)
-        train_de = torch.LongTensor(input_lang.tokenize(train_de)).view(training_size, max_length).to(device)
-        print("Finished tokenizing training data")
-        print(train_en.size(), train_de.size())
-    else:
-        pairs = [[line_english, line_german]
-                 for line_english, line_german in zip(lines_english, lines_german)
-                 if len(input_lang.tokenize_without_truncation(line_english)) < max_length and
-                 len(output_lang.tokenize_without_truncation(line_german)) < max_length]
-
-        print("Filtered to %s sentence pairs" % len(pairs))
-        seed(42)
-        shuffle(pairs)
-        train_pairs = pairs[: training_size]
-        validation_pairs = pairs[training_size: training_size + validation_size]
-    
-        train_en = [pair[0] for pair in train_pairs]
-        train_de = [pair[1] for pair in train_pairs]
-        print("Train sequences: %s" % len(train_en))
-
-        train_en = [torch.LongTensor(input_lang.tokenize(sentence)).view(-1, 1).to(device)
-                    for sentence in train_en]
-        train_de = [torch.LongTensor(output_lang.tokenize(sentence)).view(-1).to(device)
-                    for sentence in train_de]
-        validation_en = [pair[0] for pair in validation_pairs]
-        validation_de = [pair[1] for pair in validation_pairs]
-
-    return input_lang, output_lang, train_en, train_de, validation_en, validation_de
+    return input_lang, output_lang, en_sequences, de_sequences

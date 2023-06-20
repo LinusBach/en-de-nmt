@@ -1,12 +1,16 @@
+"""
+This script is dedicated to model evaluation. It loads trained Seq2Seq models and uses the functions defined in
+'evaluate.py' to calculate the performance metrics. It can handle multiple models and provides a systematic way
+to compare the performance of different models or the same model at different stages of training.
+"""
+
+
 import torch.backends.mps
 
-from decoder import AttnDecoderRNN
-from encoder import EncoderRNN
-from evaluation_functions import evaluate_loss
+from evaluate import evaluate_loss
 from dataloader import Lang
 from io import open
 import os
-import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 print(f'using device: {device}')
