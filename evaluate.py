@@ -14,8 +14,9 @@ from decoder import AttnDecoderRNN
 from typing import List, Tuple
 
 
-def evaluate_loss(encoder: EncoderRNN, decoder: AttnDecoderRNN, input_sentences: List[str], target_sentences: List[str],
-                  input_lang: Lang, output_lang: Lang, max_length: int, device: torch.device) -> float:
+def evaluate_loss(model_variant: str, encoder: EncoderRNN, decoder: AttnDecoderRNN, input_sentences: List[str],
+                  target_sentences: List[str], input_lang: Lang, output_lang: Lang,
+                  max_length: int, device: torch.device) -> float:
     encoder.eval()
     decoder.eval()
 
@@ -59,20 +60,22 @@ def evaluate_loss(encoder: EncoderRNN, decoder: AttnDecoderRNN, input_sentences:
     return total_loss / len(input_sentences)
 
 
-def evaluate_bleu(encoder: EncoderRNN, decoder: AttnDecoderRNN, input_sentences: List[str],
+def evaluate_bleu(model_variant: str, encoder: EncoderRNN, decoder: AttnDecoderRNN, input_sentences: List[str],
                   reference_sentences: List[str], input_lang: Lang, output_lang: Lang, max_length: int,
                   device: torch.device) -> float:
     bleu_scores = []
 
     for i in range(len(input_sentences)):
-        prediction, _ = inference(encoder, decoder, input_sentences[i], input_lang, output_lang, max_length, device)
+        prediction, _ = inference(model_variant, encoder, decoder, input_sentences[i], input_lang, output_lang,
+                                  max_length, device)
         bleu_score = sentence_bleu(reference_sentences[i], prediction)
         bleu_scores.append(bleu_score)
 
     return float(np.mean(bleu_scores))
 
 
-def inference(encoder: EncoderRNN, decoder: AttnDecoderRNN, sentence: str, input_lang: Lang, output_lang: Lang,
+def inference(model_variant: str, encoder: EncoderRNN, decoder: AttnDecoderRNN, sentence: str,
+              input_lang: Lang, output_lang: Lang,
               max_length: int, device: torch.device) -> Tuple[List[str], torch.Tensor]:
     encoder.eval()
     decoder.eval()

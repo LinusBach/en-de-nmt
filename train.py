@@ -20,7 +20,8 @@ from decoder import AttnDecoderRNN
 from typing import List
 
 
-def train(input_tensor: torch.Tensor, target_tensor: torch.Tensor, encoder: EncoderRNN, decoder: AttnDecoderRNN,
+def train(input_tensor: torch.Tensor, target_tensor: torch.Tensor,
+          encoder: EncoderRNN, decoder: AttnDecoderRNN,
           encoder_optimizer: torch.optim.Optimizer, decoder_optimizer: torch.optim.Optimizer,
           criterion: torch.nn.Module, max_length: int = None, device: torch.device = "cpu",
           teacher_forcing_ratio: float = 0.5) -> float:
@@ -74,7 +75,7 @@ def train(input_tensor: torch.Tensor, target_tensor: torch.Tensor, encoder: Enco
     return loss.item() / target_length
 
 
-def train_iters(encoder: EncoderRNN, decoder: AttnDecoderRNN,
+def train_iters(model_variant: str, encoder: EncoderRNN, decoder: AttnDecoderRNN,
                 input_sequences: List[torch.Tensor], output_sequences: List[torch.Tensor],
                 validation_input_sentences: List[str], validation_output_sentences: List[str],
                 input_lang: Lang, output_lang: Lang,
@@ -113,8 +114,9 @@ def train_iters(encoder: EncoderRNN, decoder: AttnDecoderRNN,
         losses.append(loss)
 
         if i % plot_every == 0:
-            eval_loss = evaluate_loss(encoder, decoder, validation_input_sentences, validation_output_sentences,
-                                      input_lang, output_lang, max_length=max_length, device=device)
+            eval_loss = evaluate_loss(model_variant, encoder, decoder,
+                                      validation_input_sentences, validation_output_sentences, input_lang, output_lang,
+                                      max_length=max_length, device=device)
             eval_losses.append(eval_loss)
             plot(eval_losses, plot_every, plots_dir=plots_dir, model_name=model_name + "_validation")
             encoder.train()
