@@ -65,7 +65,7 @@ def evaluate_losses(encoder, decoder, input_sentences, target_sentences, input_l
         input_tensor = torch.LongTensor(input_lang.tokenize(input_sentences[i])).view(-1, 1).to(device)
         target_tensor = torch.LongTensor(output_lang.tokenize(target_sentences[i])).view(-1, 1).to(device)
 
-        encoder_hidden = encoder.init_hidden(device=device)
+        encoder_hidden, encoder_cell = encoder.init_hidden(device=device)
 
         input_length = input_tensor.size(0)
         target_length = target_tensor.size(0)
@@ -75,16 +75,17 @@ def evaluate_losses(encoder, decoder, input_sentences, target_sentences, input_l
         loss: torch.Tensor = torch.tensor(0.0, device=device)
 
         for j in range(input_length):
-            encoder_output, encoder_hidden = encoder(
-                input_tensor[j], encoder_hidden)
+            encoder_output, (encoder_hidden, encoder_cell) = encoder(
+                input_tensor[j], encoder_hidden, encoder_cell)
             encoder_outputs[j] = encoder_output[0, 0]
 
         decoder_input = torch.tensor([[de_CLS_token]], device=device)
         decoder_hidden = encoder_hidden
+        decoder_cell = encoder_cell
 
         for j in range(target_length):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
+            decoder_output, (decoder_hidden, decoder_cell), decoder_attention = decoder(
+                decoder_input, decoder_hidden, decoder_cell, encoder_outputs)
             topv, topi = decoder_output.topk(1)
             decoder_input = topi.squeeze().detach()  # detach from history as input
 

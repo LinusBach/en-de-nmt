@@ -33,7 +33,7 @@ class AttnDecoderRNN(nn.Module):
         output = self.attn_combine(output).unsqueeze(0)
 
         output = F.relu(output)
-        # print(output.shape, hidden.shape)
+        print(output.shape, hidden.shape)
         output, (hidden, cell) = self.lstm(output, (hidden, cell))
 
         output = F.log_softmax(self.out(output[0]), dim=1)

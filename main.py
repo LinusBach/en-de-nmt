@@ -40,30 +40,27 @@ patience_interval = 1000
 # batch_first = True
 # batch_size = 1
 
-n_hyperparams = 2
+n_hyperparams = 6
 hyperparams = {"model_name": [
-    "1e-5_lr_1_layer_100_hidden_more_regularization",
-    "5e-5_lr_1_layer_100_hidden_2"
-    "5e-5_lr_1_layer_100_hidden",
     "100p_tfr_5e-5_lr_512_hidden_8_layers_60p_dropout_1e-4_weight_decay",
     "100p_tfr_1e-4_lr_512_hidden_8_layers_50p_dropout",
     "50p_tfr_1e-4_lr_320_hidden_4_layers_10p_dropout",
     "80p_tfr_3e-4_lr_320_hidden_5_layers_30p_dropout",
     "100p_tfr_2e-4_lr_400_hidden_8_layers_60p_dropout",
     "100p_tfr_1e-4_lr_320_hidden_6_layers_40p_dropout"],
-               "weight_decay": [1e-4, 1e-4, 1e-4, 1e-4, 0, 0, 0, 0, 0],
-               "teacher_forcing_ratio": [1, 1, 1, 1, 1, 0.5, 0.8, 1, 1],
-               "lr": [1e-5, 5e-5, 5e-5, 5e-5, 1e-4, 1e-4, 3e-4, 2e-4, 1e-4],
-               "hidden_size": [100, 100, 100, 512, 512, 320, 320, 400, 320],
-               "n_encoder_layers": [2, 1, 1, 8, 8, 4, 5, 8, 6],
-               "n_decoder_layers": [2, 1, 1, 8, 8, 4, 5, 8, 6],
-               "dropout": [0.3, 0.3, 0.3, 0.6, 0.5, 0.1, 0.3, 0.6, 0.4]}
+               "weight_decay": [1e-4, 0, 0, 0, 0, 0],
+               "teacher_forcing_ratio": [1, 1, 0.5, 0.8, 1, 1],
+               "lr": [5e-5, 1e-4, 1e-4, 3e-4, 2e-4, 1e-4],
+               "hidden_size": [512, 512, 320, 320, 400, 320],
+               "n_encoder_layers": [8, 8, 4, 5, 8, 6],
+               "n_decoder_layers": [8, 8, 4, 5, 8, 6],
+               "dropout": [0.6, 0.5, 0.1, 0.3, 0.6, 0.4]}
 
 for i in range(n_hyperparams):
     models_dir = "models_gru"
     model_name = hyperparams["model_name"][i]
     plots_dir = "plots"
-    resume_training = False
+    resume_training = True
 
     teacher_forcing_ratio = hyperparams["teacher_forcing_ratio"][i]
     lr = hyperparams["lr"][i]
