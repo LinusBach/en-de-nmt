@@ -19,19 +19,19 @@ device: torch.device = torch.device("cuda" if torch.cuda.is_available()
                                     else "mps" if torch.backends.mps.is_available() else "cpu")
 print(f'using device: {device}')
 
-model_variant = "lstm"  # "gru" or "lstm"
+model_variant = "gru"  # "gru" or "lstm"
 models_dir = "models_" + model_variant
 plots_dir = "plots"
 resume_training = False
 
-plot_every = 500
-save_every = 500
+plot_every = 2000
+save_every = 2000
 
-initial_validation_size = 200
+initial_validation_size = 20000
 start_from_sample = initial_validation_size
-n_samples = 10000
+n_samples = 500000
 max_length = 20  # max length of 30 retains around 1/3 of the data; 20 => 1/8
-n_iters = 2000
+n_iters = 40000
 
 input_lang, output_lang, english_sequences, german_sequences = prepare_data('data/train.en', 'data/train.de',
                                                                             max_length, n_samples,
@@ -47,7 +47,7 @@ validation_german = [german for english, german in zipped
                      if len(input_lang.tokenize_without_truncation(english)) < max_length
                      and len(output_lang.tokenize_without_truncation(german)) < max_length]
 
-n_hyperparams = 6
+n_hyperparams = 7
 hyperparams = {"model_name": ["100p_tfr_5e-5_lr_512_hidden_8_layers_60p_dropout_1e-4_weight_decay",
                               "100p_tfr_1e-4_lr_512_hidden_8_layers_50p_dropout",
                               "50p_tfr_1e-4_lr_320_hidden_4_layers_10p_dropout",

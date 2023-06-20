@@ -23,7 +23,7 @@ pip install torch transformers numpy nltk matplotlib tqdm
 
 ## Data
 
-You will need two text files containing paired sentences in English and German for training. The files should be placed in a directory named "data" in the project root. 
+You will need two text files containing paired sentences in English (`train.en`) and German (`train.de`) for training. The files can be downloaded from the [Stanford Neural Machine Translation](https://nlp.stanford.edu/projects/nmt/) website and should be placed in a directory named "data" in the project root. 
 
 ## Usage
 
